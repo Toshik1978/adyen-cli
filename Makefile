@@ -25,13 +25,13 @@ app.dependencies.download:
 
 app.build:
 	@echo "+ $@"
-	rm -rf bin/csv2adyen
+	rm -rf bin/adyen-cli
 	GO111MODULE=on GOGC=off go build -v -ldflags "\
 		-X main.Buildstamp=$(shell date +%Y/%m/%d_%H:%M:%S) \
 		-X main.Commit=$(shell git rev-parse --short HEAD) \
-	" -o bin/csv2adyen cmd/main.go
+	" -o bin/adyen-cli cmd/main.go
 
 clean:
 	@echo "+ $@"
 	go clean -testcache
-	rm -rf bin/csv2adyen
+	rm -rf bin/adyen-cli

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gocarina/gocsv"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/Toshik1978/csv2adyen/pkg/adyen"
 )
@@ -23,56 +23,53 @@ var (
 
 // Processor declare implementation of the main module.
 type Processor struct {
-	logger   *zap.Logger
-	client   *http.Client
-	adyenAPI *adyen.API
-	csvPath  string
-}
-
-// LinkRecord declare one split configuration record.
-type LinkRecord struct {
-	AccountHolderCode string `csv:"Account Holder Code"`
-	ToastGUID         string `csv:"Toast GUID"`
-	StoreID           string `csv:"Store ID"`
-	SplitID           string `csv:"Split ID"`
-}
-
-// newLogger initializes logger for console.
-func newLogger() (*zap.Logger, error) {
-	config := zap.NewProductionConfig()
-	config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
-	config.Encoding = "console"
-	config.DisableCaller = true
-	config.DisableStacktrace = true
-	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	return config.Build()
+	logger      *zap.Logger
+	client      *http.Client
+	adyenAPI    *adyen.API
+	csvFilePath string
+	dryRun      bool
 }
 
 // New creates new instance of Processor.
-func New(csvPath, apiURL, apiKey string, dryRun bool) *Processor {
-	logger, err := newLogger()
-	if err != nil {
-		panic(err)
+func New(
+	logger *zap.Logger, client *http.Client, config *Config,
+	csvFilePath string, balance, production, dryRun bool) *Processor {
+	var apiURL, apiKey string
+	switch {
+	case balance && production:
+		apiURL = config.AdyenMgmtURL
+		apiKey = config.AdyenMgmtKey
+	case balance && !production:
+		apiURL = config.AdyenMgmtTestURL
+		apiKey = config.AdyenMgmtTestKey
+	case !balance && production:
+		apiURL = config.AdyenCalURL
+		apiKey = config.AdyenCalKey
+	case !balance && !production:
+		apiURL = config.AdyenCalTestURL
+		apiKey = config.AdyenCalTestKey
 	}
-	client := http.DefaultClient
+
+	gocsv.SetHeaderNormalizer(strings.ToUpper)
 
 	return &Processor{
-		csvPath:  csvPath,
-		logger:   logger,
-		client:   client,
-		adyenAPI: adyen.New(logger, client, apiURL, apiKey, dryRun),
+		logger:      logger,
+		client:      client,
+		csvFilePath: csvFilePath,
+		dryRun:      dryRun,
+		adyenAPI:    adyen.New(logger, client, apiURL, apiKey),
 	}
 }
 
 // Run runs parsing & split config updating.
 func (p *Processor) Run(ctx context.Context) error {
-	file, err := os.OpenFile(p.csvPath, os.O_RDONLY, os.ModePerm)
+	file, err := os.OpenFile(p.csvFilePath, os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to open CSV: %w", err)
 	}
 	defer file.Close()
 
-	records := []*LinkRecord{}
+	var records []*LinkRecord
 	if err := gocsv.UnmarshalFile(file, &records); err != nil {
 		return fmt.Errorf("failed to read CSV: %w", err)
 	}
@@ -112,8 +109,10 @@ func (p *Processor) process(ctx context.Context, record *LinkRecord) error {
 	if err := p.updateSplitConfiguration(accountHolder, record.StoreID, record.SplitID); err != nil {
 		return fmt.Errorf("failed to replace split configuration: %w", err)
 	}
-	if err := p.adyenAPI.UpdateAccountHolder(ctx, &accountHolder.UpdateAccountHolderRequest); err != nil {
-		return fmt.Errorf("failed to update account holder: %w", err)
+	if !p.dryRun {
+		if err := p.adyenAPI.UpdateAccountHolder(ctx, &accountHolder.UpdateAccountHolderRequest); err != nil {
+			return fmt.Errorf("failed to update account holder: %w", err)
+		}
 	}
 	return nil
 }

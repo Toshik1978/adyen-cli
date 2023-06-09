@@ -17,15 +17,13 @@ type API struct {
 	client *http.Client
 	apiURL string
 	apiKey string
-	dryRun bool
 }
 
 // New instantiate the new API object instance.
-func New(logger *zap.Logger, client *http.Client, apiURL, apiKey string, dryRun bool) *API {
+func New(logger *zap.Logger, client *http.Client, apiURL, apiKey string) *API {
 	return &API{
 		apiURL: apiURL,
 		apiKey: apiKey,
-		dryRun: dryRun,
 		logger: logger,
 		client: client,
 	}
@@ -60,27 +58,23 @@ func (a *API) AccountHolder(ctx context.Context, accountHolderCode string) (*Get
 func (a *API) UpdateAccountHolder(ctx context.Context, accountHolder *UpdateAccountHolderRequest) error {
 	a.logger.
 		With(zap.Any("AccountHolder", accountHolder)).
-		With(zap.Bool("Dry Run", a.dryRun)).
 		Info(">> Update Account Holder")
 
 	var updated GetAccountHolderResponse
-	if !a.dryRun {
-		response, err := a.call(
-			ctx,
-			fmt.Sprintf("https://%s/cal/services/Account/v6/updateAccountHolder", a.apiURL),
-			accountHolder)
-		if err != nil {
-			return fmt.Errorf("failed to get update holder: %w", err)
-		}
+	response, err := a.call(
+		ctx,
+		fmt.Sprintf("https://%s/cal/services/Account/v6/updateAccountHolder", a.apiURL),
+		accountHolder)
+	if err != nil {
+		return fmt.Errorf("failed to get update holder: %w", err)
+	}
 
-		if err := json.Unmarshal(response, &updated); err != nil {
-			return fmt.Errorf("failed to unmarshal Adyen response: %w", err)
-		}
+	if err := json.Unmarshal(response, &updated); err != nil {
+		return fmt.Errorf("failed to unmarshal Adyen response: %w", err)
 	}
 
 	a.logger.
 		With(zap.Any("AccountHolder", updated)).
-		With(zap.Bool("Dry Run", a.dryRun)).
 		Info("<< Update Account Holder")
 	return nil
 }
