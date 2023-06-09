@@ -27,6 +27,7 @@ type Processor struct {
 	client      *http.Client
 	adyenAPI    *adyen.API
 	csvFilePath string
+	balance     bool
 	dryRun      bool
 }
 
@@ -55,9 +56,10 @@ func New(
 	return &Processor{
 		logger:      logger,
 		client:      client,
+		adyenAPI:    adyen.New(logger, client, apiURL, apiKey),
+		balance:     balance,
 		csvFilePath: csvFilePath,
 		dryRun:      dryRun,
-		adyenAPI:    adyen.New(logger, client, apiURL, apiKey),
 	}
 }
 
@@ -102,6 +104,24 @@ func (p *Processor) Run(ctx context.Context) error {
 }
 
 func (p *Processor) process(ctx context.Context, record *LinkRecord) error {
+	if p.balance {
+		return p.processBalance(ctx, record)
+	}
+	return p.processVIAS(ctx, record)
+}
+
+func (p *Processor) processBalance(ctx context.Context, record *LinkRecord) error {
+	if p.dryRun {
+		return nil
+	}
+
+	request := adyen.UpdateSplitConfigurationRequest{}
+	request.SplitConfiguration.BalanceAccountID = record.AccountHolderCode
+	request.SplitConfiguration.SplitConfigurationID = record.SplitID
+	return p.adyenAPI.UpdateSplitConfiguration(ctx, record.MerchantID, record.StoreID, &request)
+}
+
+func (p *Processor) processVIAS(ctx context.Context, record *LinkRecord) error {
 	accountHolder, err := p.adyenAPI.AccountHolder(ctx, record.AccountHolderCode)
 	if err != nil {
 		return fmt.Errorf("failed to get account holder: %w", err)

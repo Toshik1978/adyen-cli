@@ -14,17 +14,18 @@ This application was designed to automate some routine operations over Adyen acc
 1. Create the copy of `.env.dist` file locally.
 2. Fill it with the actual keys from Adyen (production or test).
 3. Create the CSV file with the information about stores and splits.
-   1. CSV should contain 3 mandatory column - 'Account Holder Code', 'Store ID', 'Split ID'.
-   2. Account Holder Code should be Balance Account ID in case of Balance Platform linking.
+   1. CSV should contain 4 columns - 'Account Holder Code', 'Store ID', 'Split ID' and 'Merchant ID'.
+   2. 'Account Holder Code' should actually contains 'Balance Account ID' in case of Balance Platform linking.
+   3. 'Merchant ID' is not required for VIAS, only for Balance.
 4. Run linking: `adyen-cli link --csv <Path to file> --prod`.
 5. Run `adyen-cli -h` if you have questions.
 
 ## How to build it?
 ### Prerequisites
 
-Go 1.20+ (should be built with lower version, but I didn't try it)
-GNU Make (tested on 3.81)
-Internet connection to download dependencies
+- Go 1.20+ (should be built with lower version, but I didn't try it)
+- GNU Make (tested on 3.81)
+- Internet connection to download dependencies
 
 ### Build
 

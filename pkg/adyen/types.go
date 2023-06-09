@@ -1,11 +1,13 @@
 package adyen
 
-// GetAccountHolderRequest declare account holder request Adyen type.
+// Adyen API types
+
+// GetAccountHolderRequest declare account holder request.
 type GetAccountHolderRequest struct {
 	AccountHolderCode string `json:"accountHolderCode"`
 }
 
-// GetAccountHolderResponse declare account holder response Adyen type.
+// GetAccountHolderResponse declare account holder response.
 type GetAccountHolderResponse struct {
 	UpdateAccountHolderRequest
 
@@ -20,7 +22,7 @@ type GetAccountHolderResponse struct {
 	} `json:"accounts"`
 }
 
-// UpdateAccountHolderRequest declare account holder update request Adyen type.
+// UpdateAccountHolderRequest declare account holder update request.
 type UpdateAccountHolderRequest struct {
 	AccountHolderCode    string `json:"accountHolderCode"`
 	AccountHolderDetails struct {
@@ -30,4 +32,23 @@ type UpdateAccountHolderRequest struct {
 			StoreID                string `json:"store"`
 		} `json:"storeDetails"`
 	} `json:"accountHolderDetails"`
+}
+
+// UpdateSplitConfigurationRequest declare split configuration update request on Balance.
+type UpdateSplitConfigurationRequest struct {
+	SplitConfiguration struct {
+		BalanceAccountID     string `json:"balanceAccountId"`
+		SplitConfigurationID string `json:"splitConfigurationId"`
+	} `json:"splitConfiguration"`
+}
+
+// UpdateSplitConfigurationResponse declare split configuration update response on Balance.
+type UpdateSplitConfigurationResponse struct {
+	StoreID            string `json:"id"`
+	MerchantID         string `json:"merchantId"`
+	Status             string `json:"status"`
+	SplitConfiguration struct {
+		BalanceAccountID     string `json:"balanceAccountId"`
+		SplitConfigurationID string `json:"splitConfigurationId"`
+	} `json:"splitConfiguration"`
 }
