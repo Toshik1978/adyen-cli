@@ -16,7 +16,6 @@ type Config struct {
 type LinkRecord struct {
 	MerchantID        string `csv:"MERCHANT ID"`
 	AccountHolderCode string `csv:"ACCOUNT HOLDER CODE"`
-	ToastGUID         string `csv:"TOAST GUID"`
 	StoreID           string `csv:"STORE ID"`
 	SplitID           string `csv:"SPLIT ID"`
 }
