@@ -11,11 +11,13 @@ This application was designed to automate some routine operations over Adyen acc
 ## Usage
 ### Link split configurations to stores
 
-1. Create the copy of `.env.dist` file locally.
-2. Fill it with the actual keys from Adyen (production or test).
+1. Download the version relevant to your PC from the [Releases](https://github.com/Toshik1978/adyen-cli/releases) page.
+   1. You can check the signature of the downloaded file using the relevant minisign file and public key: `RWTDIoCdDlDV5mgrQt3IK1D3ZOVZMtMpxrOO+yZgFvBP1Sv/D1BXhEkE`.
+2. Create the copy of `.env.dist` file locally.
+2. Fill it with the actual keys from Adyen (production / test / etc).
 3. Create the CSV file with the information about stores and splits.
    1. CSV should contain 4 columns - 'Account Holder Code', 'Store ID', 'Split ID' and 'Merchant ID'.
-   2. 'Account Holder Code' should actually contains 'Balance Account ID' in case of Balance Platform linking.
+   2. 'Account Holder Code' should actually contain 'Balance Account ID' in case of Balance Platform linking.
    3. 'Merchant ID' is not required for VIAS, only for Balance.
 4. Run linking: `adyen-cli link --csv <Path to file> --prod`.
 5. Run `adyen-cli -h` if you have questions.
@@ -30,7 +32,15 @@ This application was designed to automate some routine operations over Adyen acc
 ### Build
 
 Run `make app.build`.
-You will find the binary in `./bin` folder.
+
+You will find the binary for Intel macOS in `./bin` folder.
+
+You can build the version relevant for your PC using the following build configurations:
+
+- `app.build.darwin.amd64` - for Intel macOS.
+- `app.build.darwin.arm64` - for Apple Mx macOS.
+- `app.build.linux.amd64` - for Intel Linux x64.
+- `app.build.windows.amd64` - for Intel Windows x64.
 
 ## How to improve it?
 

@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	version = "Commit %s, built on %s"
+	version = "%s, built %s"
 )
 
 var (
