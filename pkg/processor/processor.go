@@ -17,8 +17,6 @@ import (
 var (
 	// ErrInvalidResponse means we have a wrong Adyen response.
 	ErrInvalidResponse = errors.New("store details count not equal to accounts count")
-	// ErrStoreNotFound means we could not find store in the store details.
-	ErrStoreNotFound = errors.New("store ID not found")
 )
 
 // Processor declare implementation of the main module.
@@ -145,7 +143,7 @@ func (p *Processor) updateSplitConfiguration(accountHolder *adyen.GetAccountHold
 		return ErrInvalidResponse
 	}
 	if accountHolder.AccountHolderDetails.StoreDetails[0].StoreID != storeID {
-		return ErrStoreNotFound
+		return fmt.Errorf("store ID not found: %s %s", accountHolder.AccountHolderDetails.StoreDetails[0].StoreID, storeID)
 	}
 
 	accountHolder.AccountHolderDetails.StoreDetails[0].VirtualAccount = accountHolder.Accounts[0].AccountCode
