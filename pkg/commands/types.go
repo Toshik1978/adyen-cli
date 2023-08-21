@@ -1,4 +1,4 @@
-package processor
+package commands
 
 // Config declare processor's configuration.
 type Config struct {
@@ -10,12 +10,4 @@ type Config struct {
 	AdyenCalTestURL  string `env:"ADYEN_CAL_TEST_URL,required"`
 	AdyenMgmtURL     string `env:"ADYEN_MGMT_URL,required"`
 	AdyenMgmtTestURL string `env:"ADYEN_MGMT_TEST_URL,required"`
-}
-
-// LinkRecord declare one split configuration record.
-type LinkRecord struct {
-	MerchantID        string `csv:"MERCHANT ID"`
-	AccountHolderCode string `csv:"ACCOUNT HOLDER CODE"`
-	StoreID           string `csv:"STORE ID"`
-	SplitID           string `csv:"SPLIT ID"`
 }

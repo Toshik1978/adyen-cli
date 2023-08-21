@@ -22,6 +22,17 @@ This application was designed to automate some routine operations over Adyen acc
 4. Run linking: `adyen-cli link --csv <Path to file> --prod`.
 5. Run `adyen-cli -h` if you have questions.
 
+### Close unused stores
+
+1. Download the version relevant to your PC from the [Releases](https://github.com/Toshik1978/adyen-cli/releases) page.
+   1. You can check the signature of the downloaded file using the relevant minisign file and public key: `RWTDIoCdDlDV5mgrQt3IK1D3ZOVZMtMpxrOO+yZgFvBP1Sv/D1BXhEkE`.
+2. Create the copy of `.env.dist` file locally.
+2. Fill it with the actual keys from Adyen (production / test / etc).
+3. Create the CSV file with the information about stores.
+   1. CSV should contain 2 columns - 'Account Holder Code', 'Store ID'.
+4. Run linking: `adyen-cli close --csv <Path to file> --prod`.
+5. Run `adyen-cli -h` if you have questions.
+
 ## How to build it?
 ### Prerequisites
 

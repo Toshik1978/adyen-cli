@@ -39,7 +39,7 @@ func (a *API) AccountHolder(ctx context.Context, accountHolderCode string) (*Get
 		ctx,
 		http.MethodPost,
 		fmt.Sprintf("https://%s/cal/services/Account/v6/getAccountHolder", a.apiURL),
-		GetAccountHolderRequest{AccountHolderCode: accountHolderCode})
+		&AccountHolderRequest{AccountHolderCode: accountHolderCode})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account holder: %w", err)
 	}
@@ -56,7 +56,7 @@ func (a *API) AccountHolder(ctx context.Context, accountHolderCode string) (*Get
 }
 
 // UpdateAccountHolder updates account holder.
-func (a *API) UpdateAccountHolder(ctx context.Context, accountHolder *UpdateAccountHolderRequest) error {
+func (a *API) UpdateAccountHolder(ctx context.Context, accountHolder *UpdateAccountHolderRequest) error { //nolint:dupl
 	a.logger.
 		With(zap.Any("AccountHolder", accountHolder)).
 		Info(">> Update Account Holder")
@@ -78,6 +78,32 @@ func (a *API) UpdateAccountHolder(ctx context.Context, accountHolder *UpdateAcco
 	a.logger.
 		With(zap.Any("AccountHolder", updated)).
 		Info("<< Update Account Holder")
+	return nil
+}
+
+// CloseAccountHolder closes account holder.
+func (a *API) CloseAccountHolder(ctx context.Context, accountHolderCode string) error { //nolint:dupl
+	a.logger.
+		With(zap.Any("AccountHolder", accountHolderCode)).
+		Info(">> Close Account Holder")
+
+	response, err := a.call(
+		ctx,
+		http.MethodPost,
+		fmt.Sprintf("https://%s/cal/services/Account/v6/closeAccountHolder", a.apiURL),
+		&AccountHolderRequest{AccountHolderCode: accountHolderCode})
+	if err != nil {
+		return fmt.Errorf("failed to close account holder: %w", err)
+	}
+
+	var closed CloseAccountHolderResponse
+	if err := json.Unmarshal(response, &closed); err != nil {
+		return fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.Any("AccountHolder", closed)).
+		Info("<< Close Account Holder")
 	return nil
 }
 
@@ -128,6 +154,16 @@ func (a *API) call(ctx context.Context, method, url string, data interface{}) ([
 	defer closeResponse(response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call Adyen: %w", err)
+	}
+	if response != nil && response.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(response.Body)
+		a.logger.
+			With(zap.ByteString("Response", body)).
+			Error("Failed call")
+		return nil, fmt.Errorf("failed to call Adyen, HTTP status: %d", response.StatusCode)
+	}
+	if response == nil {
+		return nil, fmt.Errorf("failed to call Adyen, surprising nil response")
 	}
 
 	return io.ReadAll(response.Body)

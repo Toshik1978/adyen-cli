@@ -14,7 +14,9 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/Toshik1978/csv2adyen/pkg/processor"
+	"github.com/Toshik1978/csv2adyen/pkg/commands"
+	"github.com/Toshik1978/csv2adyen/pkg/commands/close"
+	"github.com/Toshik1978/csv2adyen/pkg/commands/link"
 )
 
 const (
@@ -36,7 +38,7 @@ func main() {
 	app := newApp(logger, client, config)
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal("Failed to run the application", err)
+		log.Fatal("Failed to run the application: ", err)
 	}
 }
 
@@ -58,8 +60,8 @@ func newHTTPClient() *http.Client {
 }
 
 // newConfig initializes new configuration.
-func newConfig(logger *zap.Logger) *processor.Config {
-	var config processor.Config
+func newConfig(logger *zap.Logger) *commands.Config {
+	var config commands.Config
 	if err := env.Parse(&config); err != nil {
 		logger.
 			With(zap.Error(err)).
@@ -69,7 +71,7 @@ func newConfig(logger *zap.Logger) *processor.Config {
 }
 
 // newApp initializes new application.
-func newApp(logger *zap.Logger, client *http.Client, config *processor.Config) *cli.App {
+func newApp(logger *zap.Logger, client *http.Client, config *commands.Config) *cli.App { //nolint:funlen
 	return &cli.App{
 		Name:     "adyen-cli",
 		Version:  fmt.Sprintf(version, Commit, Buildstamp),
@@ -109,9 +111,36 @@ func newApp(logger *zap.Logger, client *http.Client, config *processor.Config) *
 					},
 				},
 				Action: func(c *cli.Context) error {
-					p := processor.New(
+					p := link.New(
 						logger, client, config,
 						c.String("csv"), c.Bool("balance"), c.Bool("prod"), c.Bool("dry-run"))
+					return p.Run(context.Background())
+				},
+			},
+			{
+				Name:    "close",
+				Aliases: []string{"c"},
+				Usage:   "Close stores",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:      "csv",
+						Required:  true,
+						TakesFile: true,
+						Usage:     "the full path to CSV file, containing the required data to close",
+					},
+					&cli.BoolFlag{
+						Name:  "prod",
+						Usage: "use this parameter if you want to run on production environment",
+					},
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "use this parameter if you want to do dry run (no changes will apply)",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					p := close.New(
+						logger, client, config,
+						c.String("csv"), c.Bool("prod"), c.Bool("dry-run"))
 					return p.Run(context.Background())
 				},
 			},
