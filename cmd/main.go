@@ -1,3 +1,4 @@
+//nolint:dupl
 package main
 
 import (
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v8"
-	_ "github.com/joho/godotenv/autoload"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -17,6 +17,8 @@ import (
 	"github.com/Toshik1978/csv2adyen/pkg/commands"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/close"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/link"
+
+	_ "github.com/joho/godotenv/autoload"
 )
 
 const (
@@ -120,13 +122,17 @@ func newApp(logger *zap.Logger, client *http.Client, config *commands.Config) *c
 			{
 				Name:    "close",
 				Aliases: []string{"c"},
-				Usage:   "Close stores",
+				Usage:   "Close merchant account",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:      "csv",
 						Required:  true,
 						TakesFile: true,
 						Usage:     "the full path to CSV file, containing the required data to close",
+					},
+					&cli.BoolFlag{
+						Name:  "store",
+						Usage: "use this parameter if you want to close store too",
 					},
 					&cli.BoolFlag{
 						Name:  "prod",
@@ -140,7 +146,7 @@ func newApp(logger *zap.Logger, client *http.Client, config *commands.Config) *c
 				Action: func(c *cli.Context) error {
 					p := close.New(
 						logger, client, config,
-						c.String("csv"), c.Bool("prod"), c.Bool("dry-run"))
+						c.String("csv"), c.Bool("store"), c.Bool("prod"), c.Bool("dry-run"))
 					return p.Run(context.Background())
 				},
 			},

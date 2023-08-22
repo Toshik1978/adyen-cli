@@ -62,3 +62,22 @@ type UpdateSplitConfigurationResponse struct {
 		SplitConfigurationID string `json:"splitConfigurationId"`
 	} `json:"splitConfiguration"`
 }
+
+// SetStoreStatusRequest declare set store status request.
+type SetStoreStatusRequest struct {
+	Status string `json:"status"`
+}
+
+// GetStoreResponse declare get store information response.
+type GetStoreResponse struct {
+	ID         string `json:"id"`
+	MerchantID string `json:"merchantId"`
+	Reference  string `json:"reference"`
+	Status     string `json:"status"`
+}
+
+// GetAllStoresResponse declare get all stores response.
+type GetAllStoresResponse struct {
+	Data       []GetStoreResponse `json:"data"`
+	ItemsTotal int64              `json:"itemsTotal"`
+}

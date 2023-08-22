@@ -13,19 +13,23 @@ import (
 
 // API define Adyen API.
 type API struct {
-	logger *zap.Logger
-	client *http.Client
-	apiURL string
-	apiKey string
+	logger  *zap.Logger
+	client  *http.Client
+	calURL  string
+	calKey  string
+	mgmtURL string
+	mgmtKey string
 }
 
 // New instantiate the new API object instance.
-func New(logger *zap.Logger, client *http.Client, apiURL, apiKey string) *API {
+func New(logger *zap.Logger, client *http.Client, calURL, calKey, mgmtURL, mgmtKey string) *API {
 	return &API{
-		apiURL: apiURL,
-		apiKey: apiKey,
-		logger: logger,
-		client: client,
+		calURL:  calURL,
+		calKey:  calKey,
+		mgmtURL: mgmtURL,
+		mgmtKey: mgmtKey,
+		logger:  logger,
+		client:  client,
 	}
 }
 
@@ -38,7 +42,8 @@ func (a *API) AccountHolder(ctx context.Context, accountHolderCode string) (*Get
 	response, err := a.call(
 		ctx,
 		http.MethodPost,
-		fmt.Sprintf("https://%s/cal/services/Account/v6/getAccountHolder", a.apiURL),
+		fmt.Sprintf("https://%s/cal/services/Account/v6/getAccountHolder", a.calURL),
+		a.calKey,
 		&AccountHolderRequest{AccountHolderCode: accountHolderCode})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account holder: %w", err)
@@ -64,7 +69,8 @@ func (a *API) UpdateAccountHolder(ctx context.Context, accountHolder *UpdateAcco
 	response, err := a.call(
 		ctx,
 		http.MethodPost,
-		fmt.Sprintf("https://%s/cal/services/Account/v6/updateAccountHolder", a.apiURL),
+		fmt.Sprintf("https://%s/cal/services/Account/v6/updateAccountHolder", a.calURL),
+		a.calKey,
 		accountHolder)
 	if err != nil {
 		return fmt.Errorf("failed to update account holder: %w", err)
@@ -90,7 +96,8 @@ func (a *API) CloseAccountHolder(ctx context.Context, accountHolderCode string) 
 	response, err := a.call(
 		ctx,
 		http.MethodPost,
-		fmt.Sprintf("https://%s/cal/services/Account/v6/closeAccountHolder", a.apiURL),
+		fmt.Sprintf("https://%s/cal/services/Account/v6/closeAccountHolder", a.calURL),
+		a.calKey,
 		&AccountHolderRequest{AccountHolderCode: accountHolderCode})
 	if err != nil {
 		return fmt.Errorf("failed to close account holder: %w", err)
@@ -118,7 +125,8 @@ func (a *API) UpdateSplitConfiguration(
 	response, err := a.call(
 		ctx,
 		http.MethodPatch,
-		fmt.Sprintf("https://%s/v1/merchants/%s/stores/%s", a.apiURL, merchantID, storeID),
+		fmt.Sprintf("https://%s/v1/merchants/%s/stores/%s", a.mgmtURL, merchantID, storeID),
+		a.mgmtKey,
 		config)
 	if err != nil {
 		return fmt.Errorf("failed to update split configuration: %w", err)
@@ -137,15 +145,77 @@ func (a *API) UpdateSplitConfiguration(
 	return nil
 }
 
-func (a *API) call(ctx context.Context, method, url string, data interface{}) ([]byte, error) {
-	buf, err := json.Marshal(data)
+// GetAllStores gets store's management IDs by store ID.
+func (a *API) GetAllStores(ctx context.Context, storeID string) (*GetAllStoresResponse, error) {
+	a.logger.
+		With(zap.Any("StoreID", storeID)).
+		Info(">> Get All Store")
+
+	response, err := a.call(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("https://%s/v1/stores?reference=%s", a.mgmtURL, storeID),
+		a.mgmtKey,
+		nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal data")
+		return nil, fmt.Errorf("failed to get all stores: %w", err)
 	}
 
-	request, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(buf))
+	var stores GetAllStoresResponse
+	if err := json.Unmarshal(response, &stores); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.Any("StoreID", storeID)).
+		With(zap.Any("Response", stores)).
+		Info("<< Get All Store")
+	return &stores, nil
+}
+
+// SetStoreStatus set store status by management ID.
+func (a *API) SetStoreStatus(ctx context.Context, storeMgmtID, status string) error {
+	a.logger.
+		With(zap.Any("StoreID", storeMgmtID)).
+		With(zap.Any("Status", status)).
+		Info(">> Set Store Status")
+
+	response, err := a.call(
+		ctx,
+		http.MethodPatch,
+		fmt.Sprintf("https://%s/v1/stores/%s", a.mgmtURL, storeMgmtID),
+		a.mgmtKey,
+		&SetStoreStatusRequest{Status: status})
+	if err != nil {
+		return fmt.Errorf("failed to set store status: %w", err)
+	}
+
+	var store GetStoreResponse
+	if err := json.Unmarshal(response, &store); err != nil {
+		return fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.Any("StoreID", storeMgmtID)).
+		With(zap.Any("Status", status)).
+		With(zap.Any("Response", store)).
+		Info("<< Set Store Status")
+	return nil
+}
+
+func (a *API) call(ctx context.Context, method, url, key string, data interface{}) ([]byte, error) {
+	var body io.Reader
+	if data != nil {
+		buf, err := json.Marshal(data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal data")
+		}
+		body = bytes.NewReader(buf)
+	}
+
+	request, err := http.NewRequestWithContext(ctx, method, url, body)
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("x-API-key", a.apiKey)
+	request.Header.Add("x-API-key", key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/AlekSi/pointer"
 	"github.com/gocarina/gocsv"
 	"go.uber.org/zap"
 
@@ -23,39 +22,45 @@ var (
 
 // Processor declare implementation of the main module.
 type Processor struct {
-	logger      *zap.Logger
-	client      *http.Client
-	adyenAPI    *adyen.API
-	csvFilePath string
-	dryRun      bool
+	logger           *zap.Logger
+	client           *http.Client
+	adyenAPI         *adyen.API
+	csvFilePath      string
+	shouldCloseStore bool
+	dryRun           bool
 }
 
 // New creates new instance of Processor.
 func New(
 	logger *zap.Logger, client *http.Client, config *commands.Config,
-	csvFilePath string, production, dryRun bool) *Processor {
-	var apiURL, apiKey string
+	csvFilePath string, shouldCloseStore, production, dryRun bool) *Processor {
+	var calURL, calKey, mgmtURL, mgmtKey string
 	switch {
 	case production:
-		apiURL = config.AdyenCalURL
-		apiKey = config.AdyenCalKey
+		calURL = config.AdyenCalURL
+		calKey = config.AdyenCalKey
+		mgmtURL = config.AdyenMgmtURL
+		mgmtKey = config.AdyenMgmtKey
 	case !production:
-		apiURL = config.AdyenCalTestURL
-		apiKey = config.AdyenCalTestKey
+		calURL = config.AdyenCalTestURL
+		calKey = config.AdyenCalTestKey
+		mgmtURL = config.AdyenMgmtTestURL
+		mgmtKey = config.AdyenMgmtTestKey
 	}
 
 	gocsv.SetHeaderNormalizer(strings.ToUpper)
 
 	return &Processor{
-		logger:      logger,
-		client:      client,
-		adyenAPI:    adyen.New(logger, client, apiURL, apiKey),
-		csvFilePath: csvFilePath,
-		dryRun:      dryRun,
+		logger:           logger,
+		client:           client,
+		adyenAPI:         adyen.New(logger, client, calURL, calKey, mgmtURL, mgmtKey),
+		csvFilePath:      csvFilePath,
+		shouldCloseStore: shouldCloseStore,
+		dryRun:           dryRun,
 	}
 }
 
-// Run runs parsing & split config updating.
+// Run runs closer of merchant accounts and stores.
 func (p *Processor) Run(ctx context.Context) error {
 	file, err := os.OpenFile(p.csvFilePath, os.O_RDONLY, os.ModePerm)
 	if err != nil {
@@ -100,18 +105,14 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 	if err != nil {
 		return fmt.Errorf("failed to get account holder: %w", err)
 	}
-	if err := p.updateAccountHolder(accountHolder, record.StoreID); err != nil {
-		return fmt.Errorf("failed to close account: %w", err)
+	if err := p.checkAccountHolder(accountHolder, record.StoreID); err != nil {
+		return fmt.Errorf("failed to close account holder: %w", err)
 	}
 	if !p.dryRun {
-		accountHolder.AccountHolderDetails.StoreDetails[0].Status = pointer.ToString("InactiveWithModifications")
-		if err := p.adyenAPI.UpdateAccountHolder(ctx, &accountHolder.UpdateAccountHolderRequest); err != nil {
-			return fmt.Errorf("failed to update account holder: %w", err)
-		}
-
-		accountHolder.AccountHolderDetails.StoreDetails[0].Status = pointer.ToString("Closed")
-		if err := p.adyenAPI.UpdateAccountHolder(ctx, &accountHolder.UpdateAccountHolderRequest); err != nil {
-			return fmt.Errorf("failed to update account holder: %w", err)
+		if p.shouldCloseStore {
+			if err := p.closeStore(ctx, record.StoreID); err != nil {
+				return fmt.Errorf("failed to close the store (%s): %w", record.StoreID, err)
+			}
 		}
 
 		if err := p.adyenAPI.CloseAccountHolder(ctx, record.AccountHolderCode); err != nil {
@@ -121,7 +122,7 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 	return nil
 }
 
-func (p *Processor) updateAccountHolder(accountHolder *adyen.GetAccountHolderResponse, storeID string) error {
+func (p *Processor) checkAccountHolder(accountHolder *adyen.GetAccountHolderResponse, storeID string) error {
 	if len(accountHolder.AccountHolderDetails.StoreDetails) != len(accountHolder.Accounts) {
 		return ErrInvalidResponse
 	}
@@ -131,8 +132,27 @@ func (p *Processor) updateAccountHolder(accountHolder *adyen.GetAccountHolderRes
 	if accountHolder.AccountHolderDetails.StoreDetails[0].StoreID != storeID {
 		return fmt.Errorf("store ID not found: %s %s", accountHolder.AccountHolderDetails.StoreDetails[0].StoreID, storeID)
 	}
+	return nil
+}
 
-	accountHolder.AccountHolderDetails.StoreDetails[0].VirtualAccount = nil
-	accountHolder.AccountHolderDetails.StoreDetails[0].SplitConfigurationUUID = nil
+func (p *Processor) closeStore(ctx context.Context, storeID string) error {
+	stores, err := p.adyenAPI.GetAllStores(ctx, storeID)
+	if err != nil {
+		return fmt.Errorf("failed to get all stores: %w", err)
+	}
+	if stores.ItemsTotal != 1 || len(stores.Data) != 1 {
+		return ErrInvalidResponse
+	}
+	if stores.Data[0].Reference != storeID {
+		return fmt.Errorf("store ID not found: %s %s", stores.Data[0].Reference, storeID)
+	}
+
+	if err := p.adyenAPI.SetStoreStatus(ctx, stores.Data[0].ID, "inactive"); err != nil {
+		return fmt.Errorf("failed to set inactive status: %w", err)
+	}
+	if err := p.adyenAPI.SetStoreStatus(ctx, stores.Data[0].ID, "closed"); err != nil {
+		return fmt.Errorf("failed to set closed status: %w", err)
+	}
+
 	return nil
 }
