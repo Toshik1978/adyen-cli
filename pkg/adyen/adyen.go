@@ -46,7 +46,7 @@ func (a *API) AccountHolder(ctx context.Context, accountHolderCode string) (*Get
 		a.calKey,
 		&AccountHolderRequest{AccountHolderCode: accountHolderCode})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get account holder: %w", err)
+		return nil, fmt.Errorf("failed to get account holder (%s): %w", accountHolderCode, err)
 	}
 
 	var accountHolder GetAccountHolderResponse
