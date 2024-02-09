@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/AlekSi/pointer"
 	"go.uber.org/zap"
 )
 
@@ -200,6 +201,43 @@ func (a *API) SetStoreStatus(ctx context.Context, storeMgmtID, status string) er
 		With(zap.Any("Status", status)).
 		With(zap.Any("Response", store)).
 		Info("<< Set Store Status")
+	return nil
+}
+
+// ReassignTerminal reassign terminal to store or merchant (always inventory)
+func (a *API) ReassignTerminal(ctx context.Context, terminalID, merchantID, storeID string) error {
+	a.logger.
+		With(zap.Any("TerminalID", terminalID)).
+		With(zap.Any("MerchantID", merchantID)).
+		With(zap.Any("StoreID", storeID)).
+		Info(">> Re-assign Terminal")
+
+	req := ReassignTerminalRequest{}
+	switch {
+	case storeID != "":
+		req.StoreID = pointer.ToString(storeID)
+	case merchantID != "":
+		req.MerchantID = pointer.ToString(merchantID)
+		req.Inventory = pointer.ToBool(true)
+	default:
+		return fmt.Errorf("no merchant id and store id for terminal re-assignment: %s", terminalID)
+	}
+
+	_, err := a.call(
+		ctx,
+		http.MethodPost,
+		fmt.Sprintf("https://%s/v3/terminals/%s/reassign", a.mgmtURL, terminalID),
+		a.mgmtKey,
+		&req)
+	if err != nil {
+		return fmt.Errorf("failed to re-assign terminal: %w", err)
+	}
+
+	a.logger.
+		With(zap.Any("TerminalID", terminalID)).
+		With(zap.Any("MerchantID", merchantID)).
+		With(zap.Any("StoreID", storeID)).
+		Info("<< Re-assign Terminal")
 	return nil
 }
 

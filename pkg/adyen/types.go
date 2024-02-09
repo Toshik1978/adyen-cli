@@ -81,3 +81,10 @@ type GetAllStoresResponse struct {
 	Data       []GetStoreResponse `json:"data"`
 	ItemsTotal int64              `json:"itemsTotal"`
 }
+
+// ReassignTerminalRequest declare reassign terminal request.
+type ReassignTerminalRequest struct {
+	StoreID    *string `json:"storeId,omitempty"`
+	MerchantID *string `json:"merchantId,omitempty"`
+	Inventory  *bool   `json:"inventory,omitempty"`
+}
