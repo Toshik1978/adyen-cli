@@ -88,3 +88,31 @@ type ReassignTerminalRequest struct {
 	MerchantID *string `json:"merchantId,omitempty"`
 	Inventory  *bool   `json:"inventory,omitempty"`
 }
+
+// Sim Card statuses.
+
+const (
+	SimCardActivated = "ACTIVATED"
+	SimCardInventory = "INVENTORY"
+)
+
+// SetSimCardStatusRequest declare request to update sim-card status.
+type SetSimCardStatusRequest struct {
+	Connectivity struct {
+		Status string `json:"simcardStatus"`
+	} `json:"connectivity"`
+}
+
+// TerminalSettingsResponse declare response with terminal settings.
+type TerminalSettingsResponse struct { //nolint:govet
+	Timeouts struct {
+		FromActiveToSleep int `json:"fromActiveToSleep"`
+	} `json:"timeouts"`
+	Hardware struct {
+		DisplayMaximumBackLight int `json:"displayMaximumBackLight"`
+		RestartHour             int `json:"restartHour"`
+	} `json:"hardware"`
+	Connectivity struct {
+		Status string `json:"simcardStatus"`
+	} `json:"connectivity"`
+}

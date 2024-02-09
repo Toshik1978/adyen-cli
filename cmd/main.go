@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/Toshik1978/csv2adyen/pkg/commands"
+	"github.com/Toshik1978/csv2adyen/pkg/commands/cellular"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/close"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/link"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/reassign"
@@ -175,6 +176,37 @@ func newApp(logger *zap.Logger, client *http.Client, config *commands.Config) *c
 					p := reassign.New(
 						logger, client, config,
 						c.String("csv"), c.Bool("prod"), c.Bool("dry-run"))
+					return p.Run(context.Background())
+				},
+			},
+			{
+				Name:    "cellular",
+				Aliases: []string{"e"},
+				Usage:   "Enable/disable cellular on terminals",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:      "csv",
+						Required:  true,
+						TakesFile: true,
+						Usage:     "the full path to CSV file, containing the terminal IDs",
+					},
+					&cli.BoolFlag{
+						Name:  "disable",
+						Usage: "use this parameter if you want to disable cellular",
+					},
+					&cli.BoolFlag{
+						Name:  "prod",
+						Usage: "use this parameter if you want to run on production environment",
+					},
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "use this parameter if you want to do dry run (no changes will apply)",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					p := cellular.New(
+						logger, client, config,
+						c.String("csv"), c.Bool("disable"), c.Bool("prod"), c.Bool("dry-run"))
 					return p.Run(context.Background())
 				},
 			},

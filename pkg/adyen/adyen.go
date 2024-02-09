@@ -241,6 +241,43 @@ func (a *API) ReassignTerminal(ctx context.Context, terminalID, merchantID, stor
 	return nil
 }
 
+// SetSimCardStatus set sim card status.
+func (a *API) SetSimCardStatus(ctx context.Context, terminalID string, disable bool) error {
+	a.logger.
+		With(zap.Any("TerminalID", terminalID)).
+		With(zap.Any("Disable", disable)).
+		Info(">> Set Sim Card Status")
+
+	req := SetSimCardStatusRequest{}
+	if disable {
+		req.Connectivity.Status = SimCardInventory
+	} else {
+		req.Connectivity.Status = SimCardActivated
+	}
+
+	response, err := a.call(
+		ctx,
+		http.MethodPatch,
+		fmt.Sprintf("https://%s/v3/terminals/%s/terminalSettings", a.mgmtURL, terminalID),
+		a.mgmtKey,
+		&req)
+	if err != nil {
+		return fmt.Errorf("failed to set simcard status: %w", err)
+	}
+
+	var updated TerminalSettingsResponse
+	if err := json.Unmarshal(response, &updated); err != nil {
+		return fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.Any("TerminalID", terminalID)).
+		With(zap.Any("Disable", disable)).
+		With(zap.Any("Response", updated)).
+		Info("<< Set Sim Card Status")
+	return nil
+}
+
 func (a *API) call(ctx context.Context, method, url, key string, data interface{}) ([]byte, error) {
 	var body io.Reader
 	if data != nil {
