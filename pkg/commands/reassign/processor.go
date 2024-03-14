@@ -15,6 +15,11 @@ import (
 	"github.com/Toshik1978/csv2adyen/pkg/commands"
 )
 
+var (
+	// ErrInvalidResponse means we have a wrong Adyen response.
+	ErrInvalidResponse = errors.New("store details count not equal to accounts count")
+)
+
 // Processor declare implementation of the main module.
 type Processor struct {
 	logger      *zap.Logger
@@ -98,7 +103,22 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 		return nil
 	}
 
-	if err := p.adyenAPI.ReassignTerminal(ctx, record.TerminalID, record.MerchantID, record.StoreID); err != nil {
+	var storeID string
+	if record.StoreID != "" {
+		// Need to convert Adyen Store GUID to the management ID.
+		stores, err := p.adyenAPI.GetAllStores(ctx, record.StoreID)
+		if err != nil {
+			return fmt.Errorf("failed to get all stores: %w", err)
+		}
+		if stores.ItemsTotal != 1 || len(stores.Data) != 1 {
+			return ErrInvalidResponse
+		}
+		if stores.Data[0].Reference != record.StoreID {
+			return fmt.Errorf("store ID not found: %s %s", stores.Data[0].Reference, record.StoreID)
+		}
+		storeID = stores.Data[0].ID
+	}
+	if err := p.adyenAPI.ReassignTerminal(ctx, record.TerminalID, record.MerchantID, storeID); err != nil {
 		return fmt.Errorf("failed to process terminal re-assignment: %w", err)
 	}
 	return nil
