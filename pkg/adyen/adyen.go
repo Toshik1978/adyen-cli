@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/AlekSi/pointer"
 	"go.uber.org/zap"
@@ -56,7 +58,8 @@ func (a *API) AccountHolder(ctx context.Context, accountHolderCode string) (*Get
 	}
 
 	a.logger.
-		With(zap.Any("AccountHolder", accountHolder)).
+		With(zap.String("AccountHolderCode", accountHolderCode)).
+		With(zap.Any("Response", accountHolder)).
 		Info("<< Get Account Holder")
 	return &accountHolder, nil
 }
@@ -83,7 +86,8 @@ func (a *API) UpdateAccountHolder(ctx context.Context, accountHolder *UpdateAcco
 	}
 
 	a.logger.
-		With(zap.Any("AccountHolder", updated)).
+		With(zap.Any("AccountHolder", accountHolder)).
+		With(zap.Any("Response", updated)).
 		Info("<< Update Account Holder")
 	return nil
 }
@@ -91,7 +95,7 @@ func (a *API) UpdateAccountHolder(ctx context.Context, accountHolder *UpdateAcco
 // CloseAccountHolder closes account holder.
 func (a *API) CloseAccountHolder(ctx context.Context, accountHolderCode string) error { //nolint:dupl
 	a.logger.
-		With(zap.Any("AccountHolder", accountHolderCode)).
+		With(zap.String("AccountHolderCode", accountHolderCode)).
 		Info(">> Close Account Holder")
 
 	response, err := a.call(
@@ -110,7 +114,8 @@ func (a *API) CloseAccountHolder(ctx context.Context, accountHolderCode string) 
 	}
 
 	a.logger.
-		With(zap.Any("AccountHolder", closed)).
+		With(zap.String("AccountHolderCode", accountHolderCode)).
+		With(zap.Any("Response", closed)).
 		Info("<< Close Account Holder")
 	return nil
 }
@@ -149,13 +154,13 @@ func (a *API) UpdateSplitConfiguration(
 // GetAllStores gets store's management IDs by store ID.
 func (a *API) GetAllStores(ctx context.Context, storeID string) (*GetAllStoresResponse, error) {
 	a.logger.
-		With(zap.Any("StoreID", storeID)).
+		With(zap.String("StoreID", storeID)).
 		Info(">> Get All Store")
 
 	response, err := a.call(
 		ctx,
 		http.MethodGet,
-		fmt.Sprintf("https://%s/v1/stores?reference=%s", a.mgmtURL, storeID),
+		fmt.Sprintf("https://%s/v3/stores?reference=%s", a.mgmtURL, storeID),
 		a.mgmtKey,
 		nil)
 	if err != nil {
@@ -168,7 +173,7 @@ func (a *API) GetAllStores(ctx context.Context, storeID string) (*GetAllStoresRe
 	}
 
 	a.logger.
-		With(zap.Any("StoreID", storeID)).
+		With(zap.String("StoreID", storeID)).
 		With(zap.Any("Response", stores)).
 		Info("<< Get All Store")
 	return &stores, nil
@@ -177,8 +182,8 @@ func (a *API) GetAllStores(ctx context.Context, storeID string) (*GetAllStoresRe
 // SetStoreStatus set store status by management ID.
 func (a *API) SetStoreStatus(ctx context.Context, storeMgmtID, status string) error {
 	a.logger.
-		With(zap.Any("StoreID", storeMgmtID)).
-		With(zap.Any("Status", status)).
+		With(zap.String("StoreID", storeMgmtID)).
+		With(zap.String("Status", status)).
 		Info(">> Set Store Status")
 
 	response, err := a.call(
@@ -197,8 +202,8 @@ func (a *API) SetStoreStatus(ctx context.Context, storeMgmtID, status string) er
 	}
 
 	a.logger.
-		With(zap.Any("StoreID", storeMgmtID)).
-		With(zap.Any("Status", status)).
+		With(zap.String("StoreID", storeMgmtID)).
+		With(zap.String("Status", status)).
 		With(zap.Any("Response", store)).
 		Info("<< Set Store Status")
 	return nil
@@ -207,9 +212,9 @@ func (a *API) SetStoreStatus(ctx context.Context, storeMgmtID, status string) er
 // ReassignTerminal reassign terminal to store or merchant (always inventory)
 func (a *API) ReassignTerminal(ctx context.Context, terminalID, merchantID, storeID string) error {
 	a.logger.
-		With(zap.Any("TerminalID", terminalID)).
-		With(zap.Any("MerchantID", merchantID)).
-		With(zap.Any("StoreID", storeID)).
+		With(zap.String("TerminalID", terminalID)).
+		With(zap.String("MerchantID", merchantID)).
+		With(zap.String("StoreID", storeID)).
 		Info(">> Re-assign Terminal")
 
 	req := ReassignTerminalRequest{}
@@ -234,9 +239,9 @@ func (a *API) ReassignTerminal(ctx context.Context, terminalID, merchantID, stor
 	}
 
 	a.logger.
-		With(zap.Any("TerminalID", terminalID)).
-		With(zap.Any("MerchantID", merchantID)).
-		With(zap.Any("StoreID", storeID)).
+		With(zap.String("TerminalID", terminalID)).
+		With(zap.String("MerchantID", merchantID)).
+		With(zap.String("StoreID", storeID)).
 		Info("<< Re-assign Terminal")
 	return nil
 }
@@ -244,8 +249,8 @@ func (a *API) ReassignTerminal(ctx context.Context, terminalID, merchantID, stor
 // SetSimCardStatus set sim card status.
 func (a *API) SetSimCardStatus(ctx context.Context, terminalID string, disable bool) error {
 	a.logger.
-		With(zap.Any("TerminalID", terminalID)).
-		With(zap.Any("Disable", disable)).
+		With(zap.String("TerminalID", terminalID)).
+		With(zap.Bool("Disable", disable)).
 		Info(">> Set Sim Card Status")
 
 	req := SetSimCardStatusRequest{}
@@ -271,10 +276,117 @@ func (a *API) SetSimCardStatus(ctx context.Context, terminalID string, disable b
 	}
 
 	a.logger.
-		With(zap.Any("TerminalID", terminalID)).
-		With(zap.Any("Disable", disable)).
+		With(zap.String("TerminalID", terminalID)).
+		With(zap.Bool("Disable", disable)).
 		With(zap.Any("Response", updated)).
 		Info("<< Set Sim Card Status")
+	return nil
+}
+
+// GetStoreTerminals gets the list of store terminals.
+func (a *API) GetStoreTerminals(ctx context.Context, storeID, searchQuery string) (*GetStoreTerminalsResponse, error) { //nolint:dupl
+	a.logger.
+		With(zap.String("StoreID", storeID)).
+		With(zap.String("SearchQuery", searchQuery)).
+		Info(">> Get Store Terminals")
+
+	response, err := a.call(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("https://%s/v3/terminals?storeIds=%s&searchQuery=%s&pageSize=100", a.mgmtURL, storeID, searchQuery),
+		a.mgmtKey,
+		nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all terminals: %w", err)
+	}
+
+	var terminals GetStoreTerminalsResponse
+	if err := json.Unmarshal(response, &terminals); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("StoreID", storeID)).
+		With(zap.String("SearchQuery", searchQuery)).
+		With(zap.Any("Response", terminals)).
+		Info("<< Get Store Terminals")
+	return &terminals, nil
+}
+
+// GetAndroidApps gets the list of android apps.
+func (a *API) GetAndroidApps(ctx context.Context, companyID, packageName string) (*GetAndroidAppsResponse, error) { //nolint:dupl
+	a.logger.
+		With(zap.String("CompanyID", companyID)).
+		With(zap.String("PackageName", packageName)).
+		Info(">> Get Android Apps")
+
+	response, err := a.call(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("https://%s/v3/companies/%s/androidApps?packageName=%s", a.mgmtURL, companyID, packageName),
+		a.mgmtKey,
+		nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all apps: %w", err)
+	}
+
+	var apps GetAndroidAppsResponse
+	if err := json.Unmarshal(response, &apps); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("CompanyID", companyID)).
+		With(zap.String("PackageName", packageName)).
+		With(zap.Any("Response", apps)).
+		Info("<< Get Android Apps")
+	return &apps, nil
+}
+
+// InstallAndroidApp schedule action to install android app.
+func (a *API) InstallAndroidApp(ctx context.Context, appID, storeID string, terminalIDs []string, at time.Time) error { //nolint:dupl
+	a.logger.
+		With(zap.String("AppID", appID)).
+		With(zap.String("StoreID", storeID)).
+		With(zap.Strings("TerminalIDs", terminalIDs)).
+		With(zap.Time("ScheduledAt", at)).
+		Info(">> Install Android App")
+
+	scheduledAt := at.Format(time.RFC3339)
+	if scheduledAt[len(scheduledAt)-1] == 'Z' {
+		scheduledAt = strings.Replace(scheduledAt, "Z", "+00:00", 1)
+	}
+	scheduledAt = strings.Replace(scheduledAt, "Z", "", 1)
+	req := ScheduleActionRequest{
+		TerminalIDs: terminalIDs,
+		StoreID:     storeID,
+		ScheduledAt: scheduledAt,
+	}
+	req.ActionDetails.Type = "InstallAndroidApp"
+	req.ActionDetails.AppID = appID
+
+	response, err := a.call(
+		ctx,
+		http.MethodPost,
+		fmt.Sprintf("https://%s/v3/terminals/scheduleActions", a.mgmtURL),
+		a.mgmtKey,
+		&req)
+	if err != nil {
+		return fmt.Errorf("failed to schedule app install: %w", err)
+	}
+
+	var scheduled ScheduleActionResponse
+	if err := json.Unmarshal(response, &scheduled); err != nil {
+		return fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("AppID", appID)).
+		With(zap.String("StoreID", storeID)).
+		With(zap.Strings("TerminalIDs", terminalIDs)).
+		With(zap.Time("ScheduledAt", at)).
+		With(zap.Any("Response", response)).
+		Info("<< Install Android App")
 	return nil
 }
 

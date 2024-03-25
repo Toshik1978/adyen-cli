@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v8"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -17,10 +18,9 @@ import (
 	"github.com/Toshik1978/csv2adyen/pkg/commands"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/cellular"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/close"
+	"github.com/Toshik1978/csv2adyen/pkg/commands/install"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/link"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/reassign"
-
-	_ "github.com/joho/godotenv/autoload"
 )
 
 const (
@@ -207,6 +207,33 @@ func newApp(logger *zap.Logger, client *http.Client, config *commands.Config) *c
 					p := cellular.New(
 						logger, client, config,
 						c.String("csv"), c.Bool("disable"), c.Bool("prod"), c.Bool("dry-run"))
+					return p.Run(context.Background())
+				},
+			},
+			{
+				Name:    "install",
+				Aliases: []string{"i"},
+				Usage:   "Install apps on terminals",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:      "csv",
+						Required:  true,
+						TakesFile: true,
+						Usage:     "the full path to CSV file, containing the terminal IDs",
+					},
+					&cli.BoolFlag{
+						Name:  "prod",
+						Usage: "use this parameter if you want to run on production environment",
+					},
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "use this parameter if you want to do dry run (no changes will apply)",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					p := install.New(
+						logger, client, config,
+						c.String("csv"), c.Bool("prod"), c.Bool("dry-run"))
 					return p.Run(context.Background())
 				},
 			},

@@ -1,5 +1,7 @@
 package adyen
 
+import "time"
+
 // Adyen API types
 
 // AccountHolderRequest declare general account holder request.
@@ -115,4 +117,76 @@ type TerminalSettingsResponse struct { //nolint:govet
 	Connectivity struct {
 		Status string `json:"simcardStatus"`
 	} `json:"connectivity"`
+}
+
+// GetStoreTerminalsResponse declare response for get store terminals request.
+type GetStoreTerminalsResponse struct { //nolint:govet
+	ItemsTotal int `json:"itemsTotal"`
+	PagesTotal int `json:"pagesTotal"`
+	Data       []struct {
+		ID                string    `json:"id"`
+		Model             string    `json:"model"`
+		SerialNumber      string    `json:"serialNumber"`
+		LastActivityAt    time.Time `json:"lastActivityAt"`
+		LastTransactionAt time.Time `json:"lastTransactionAt"`
+		FirmwareVersion   string    `json:"firmwareVersion"`
+		Assignment        struct {
+			CompanyID  string `json:"companyId"`
+			MerchantID string `json:"merchantId"`
+			StoreID    string `json:"storeId"`
+			Status     string `json:"status"`
+		} `json:"assignment"`
+		Connectivity struct {
+			Cellular struct {
+				Status string `json:"status"`
+				Iccid  string `json:"iccid"`
+			} `json:"cellular"`
+			Wifi struct {
+				IPAddress  string `json:"ipAddress"`
+				MACAddress string `json:"macAddress"`
+			} `json:"wifi"`
+		} `json:"connectivity"`
+	} `json:"data"`
+}
+
+// GetAndroidAppsResponse declare response for get android apps request.
+type GetAndroidAppsResponse struct {
+	Data []struct { //nolint:govet
+		ID          string `json:"id"`
+		PackageName string `json:"packageName"`
+		VersionCode int    `json:"versionCode"`
+		Description string `json:"description"`
+		Label       string `json:"label"`
+		VersionName string `json:"versionName"`
+		Status      string `json:"status"`
+	} `json:"data"`
+}
+
+// ScheduleActionRequest declare structure for schedule action request.
+type ScheduleActionRequest struct { //nolint:govet
+	TerminalIDs   []string `json:"terminalIds"`
+	StoreID       string   `json:"storeId"`
+	ScheduledAt   string   `json:"scheduledAt"`
+	ActionDetails struct {
+		Type  string `json:"type"`
+		AppID string `json:"appId"`
+	} `json:"actionDetails"`
+}
+
+// ScheduleActionResponse declare response for schedule action request.
+type ScheduleActionResponse struct {
+	ActionDetails struct {
+		AppID string `json:"appId"`
+		Type  string `json:"type"`
+	} `json:"actionDetails"`
+	ScheduledAt string `json:"scheduledAt"`
+	StoreID     string `json:"storeId"`
+	Items       []struct {
+		ID         string `json:"id"`
+		TerminalID string `json:"terminalId"`
+	} `json:"items"`
+	TerminalsWithErrors struct {
+	} `json:"terminalsWithErrors"`
+	TotalScheduled int `json:"totalScheduled"`
+	TotalErrors    int `json:"totalErrors"`
 }
