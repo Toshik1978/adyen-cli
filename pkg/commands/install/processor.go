@@ -128,7 +128,20 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 	if p.dryRun {
 		return nil
 	}
-	if err := p.adyenAPI.InstallAndroidApp(ctx, appID, "", terminalIDs, time.Now().Add(2*time.Minute)); err != nil {
+
+	scheduledAt := record.Date
+	if scheduledAt == "" {
+		scheduledAt = time.Now().Add(2 * time.Minute).Format(time.RFC3339)
+		if scheduledAt[len(scheduledAt)-1] == 'Z' {
+			scheduledAt = strings.Replace(scheduledAt, "Z", "+0000", 1)
+		}
+		if scheduledAt[len(scheduledAt)-3] == ':' {
+			scheduledAt = scheduledAt[:len(scheduledAt)-3] + scheduledAt[len(scheduledAt)-2:]
+		}
+		scheduledAt = strings.Replace(scheduledAt, "Z", "", 1)
+	}
+
+	if err := p.adyenAPI.InstallAndroidApp(ctx, appID, "", terminalIDs, scheduledAt); err != nil {
 		return fmt.Errorf("failed to process app installations: %w", err)
 	}
 	return nil

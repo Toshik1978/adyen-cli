@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/AlekSi/pointer"
 	"go.uber.org/zap"
@@ -344,23 +342,18 @@ func (a *API) GetAndroidApps(ctx context.Context, companyID, packageName string)
 }
 
 // InstallAndroidApp schedule action to install android app.
-func (a *API) InstallAndroidApp(ctx context.Context, appID, storeID string, terminalIDs []string, at time.Time) error { //nolint:dupl
+func (a *API) InstallAndroidApp(ctx context.Context, appID, storeID string, terminalIDs []string, at string) error { //nolint:dupl
 	a.logger.
 		With(zap.String("AppID", appID)).
 		With(zap.String("StoreID", storeID)).
 		With(zap.Strings("TerminalIDs", terminalIDs)).
-		With(zap.Time("ScheduledAt", at)).
+		With(zap.String("ScheduledAt", at)).
 		Info(">> Install Android App")
 
-	scheduledAt := at.Format(time.RFC3339)
-	if scheduledAt[len(scheduledAt)-1] == 'Z' {
-		scheduledAt = strings.Replace(scheduledAt, "Z", "+00:00", 1)
-	}
-	scheduledAt = strings.Replace(scheduledAt, "Z", "", 1)
 	req := ScheduleActionRequest{
 		TerminalIDs: terminalIDs,
 		StoreID:     storeID,
-		ScheduledAt: scheduledAt,
+		ScheduledAt: at,
 	}
 	req.ActionDetails.Type = "InstallAndroidApp"
 	req.ActionDetails.AppID = appID
@@ -384,7 +377,7 @@ func (a *API) InstallAndroidApp(ctx context.Context, appID, storeID string, term
 		With(zap.String("AppID", appID)).
 		With(zap.String("StoreID", storeID)).
 		With(zap.Strings("TerminalIDs", terminalIDs)).
-		With(zap.Time("ScheduledAt", at)).
+		With(zap.String("ScheduledAt", at)).
 		With(zap.Any("Response", response)).
 		Info("<< Install Android App")
 	return nil

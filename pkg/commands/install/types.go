@@ -8,4 +8,5 @@ type Record struct {
 	TerminalID     string `csv:"TERMINAL ID"`
 	PackageName    string `csv:"PACKAGE NAME"`
 	VersionName    string `csv:"VERSION NAME"`
+	Date           string `csv:"DATE"`
 }
