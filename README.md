@@ -30,7 +30,7 @@ This application was designed to automate some routine operations over Adyen acc
 2. Fill it with the actual keys from Adyen (production / test / etc).
 3. Create the CSV file with the information about stores.
    1. CSV should contain 2 columns - 'Account Holder Code', 'Store ID'.
-4. Run linking: `adyen-cli close --csv <Path to file> --prod`.
+4. Run the process: `adyen-cli close --csv <Path to file> --prod`.
 5. Run `adyen-cli -h` if you have questions.
 
 ### Re-assign terminals
@@ -41,7 +41,7 @@ This application was designed to automate some routine operations over Adyen acc
 2. Fill it with the actual keys from Adyen (production / test / etc).
 3. Create the CSV file with the information about stores.
    1. CSV should contain 3 columns - 'Terminal ID', 'Merchant ID', 'Store ID'. You can use either Merchant or Store ID. If you use Merchant, then the terminal will be assigned to inventory.
-4. Run linking: `adyen-cli reassign --csv <Path to file> --prod`.
+4. Run assignment: `adyen-cli reassign --csv <Path to file> --prod`.
 5. Run `adyen-cli -h` if you have questions.
 
 ### Enable/disable cellular on the terminal
@@ -52,7 +52,22 @@ This application was designed to automate some routine operations over Adyen acc
 2. Fill it with the actual keys from Adyen (production / test / etc).
 3. Create the CSV file with the information about stores.
    1. CSV should contain 1 column - 'Terminal ID'.
-4. Run linking: `adyen-cli cellular --csv <Path to file> --prod` if you want to enable cellular and add `--disable` flag if you want to disable it.
+4. Run the process: `adyen-cli cellular --csv <Path to file> --prod` if you want to enable cellular and add `--disable` flag if you want to disable it.
+5. Run `adyen-cli -h` if you have questions.
+
+### Install Android application on the supported terminal
+
+1. Download the version relevant to your PC from the [Releases](https://github.com/Toshik1978/adyen-cli/releases) page.
+   1. You can check the signature of the downloaded file using the relevant minisign file and public key: `RWTDIoCdDlDV5mgrQt3IK1D3ZOVZMtMpxrOO+yZgFvBP1Sv/D1BXhEkE`.
+2. Create the copy of `.env.dist` file locally.
+2. Fill it with the actual keys from Adyen (production / test / etc).
+3. Create the CSV file with the information about application.
+   1. CSV should contain several columns - 'Company ID', 'Store ID', 'Terminal ID', 'Filter', 'Package Name', 'Version Name' and 'Date'.
+   2. You should use 'Store ID' or 'Terminal ID'. If 'Store ID' defined, the tool will try to find all terminals under the store with the given 'Filter'.
+   3. 'Company ID', 'Package Name' and 'Version Name' will be used to find an application in the list of all available applications.
+   4. 'Date' can be empty, the tool will use NOW() + 2 minutes to schedule an installation.
+   5. The 'Date' format is defined in the Adyen documentation: https://docs.adyen.com/api-explorer/Management/latest/post/terminals/scheduleActions#request-scheduledAt
+4. Run installation: `adyen-cli install --csv <Path to file> --prod`.
 5. Run `adyen-cli -h` if you have questions.
 
 ## How to build it?
