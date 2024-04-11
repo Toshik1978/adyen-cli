@@ -136,7 +136,7 @@ func (p *Processor) checkAccountHolder(accountHolder *adyen.GetAccountHolderResp
 }
 
 func (p *Processor) closeStore(ctx context.Context, storeID string) error {
-	stores, err := p.adyenAPI.GetAllStores(ctx, storeID)
+	stores, err := p.adyenAPI.SearchStores(ctx, storeID)
 	if err != nil {
 		return fmt.Errorf("failed to get all stores: %w", err)
 	}

@@ -148,7 +148,7 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 }
 
 func (p *Processor) storeID(ctx context.Context, storeID string) (string, error) {
-	stores, err := p.adyenAPI.GetAllStores(ctx, storeID)
+	stores, err := p.adyenAPI.SearchStores(ctx, storeID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get all stores: %w", err)
 	}
@@ -162,7 +162,7 @@ func (p *Processor) storeID(ctx context.Context, storeID string) (string, error)
 }
 
 func (p *Processor) terminalIDs(ctx context.Context, storeID, searchQuery string) ([]string, error) {
-	terminals, err := p.adyenAPI.GetStoreTerminals(ctx, storeID, searchQuery)
+	terminals, err := p.adyenAPI.SearchTerminals(ctx, storeID, searchQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get terminals: %w", err)
 	}
@@ -178,7 +178,7 @@ func (p *Processor) terminalIDs(ctx context.Context, storeID, searchQuery string
 }
 
 func (p *Processor) appID(ctx context.Context, companyID, packageName, versionName string) (string, error) {
-	apps, err := p.adyenAPI.GetAndroidApps(ctx, companyID, packageName)
+	apps, err := p.adyenAPI.SearchAndroidApps(ctx, companyID, packageName)
 	if err != nil {
 		return "", fmt.Errorf("failed to get all apps: %w", err)
 	}

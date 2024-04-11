@@ -106,7 +106,7 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 	var storeID string
 	if record.StoreID != "" {
 		// Need to convert Adyen Store GUID to the management ID.
-		stores, err := p.adyenAPI.GetAllStores(ctx, record.StoreID)
+		stores, err := p.adyenAPI.SearchStores(ctx, record.StoreID)
 		if err != nil {
 			return fmt.Errorf("failed to get all stores: %w", err)
 		}

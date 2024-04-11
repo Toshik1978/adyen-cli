@@ -78,8 +78,8 @@ type GetStoreResponse struct {
 	Status     string `json:"status"`
 }
 
-// GetAllStoresResponse declare get all stores response.
-type GetAllStoresResponse struct {
+// SearchStoresResponse declare get all stores response.
+type SearchStoresResponse struct {
 	Data       []GetStoreResponse `json:"data"`
 	ItemsTotal int64              `json:"itemsTotal"`
 }
@@ -105,22 +105,157 @@ type SetSimCardStatusRequest struct {
 	} `json:"connectivity"`
 }
 
+// SetOfflinePaymentsRequest declare request to update offline payments settings.
+type SetOfflinePaymentsRequest struct {
+	OfflineProcessing struct { //nolint:govet
+		ChipFloorLimit     int        `json:"chipFloorLimit"`
+		OfflineSwipeLimits []struct { //nolint:govet
+			Amount       int    `json:"amount"`
+			CurrencyCode string `json:"currencyCode"`
+		} `json:"offlineSwipeLimits"`
+	} `json:"offlineProcessing"`
+	StoreAndForward struct { //nolint:govet
+		MaxPayments int        `json:"maxPayments"`
+		MaxAmount   []struct { //nolint:govet
+			Amount       int    `json:"amount"`
+			CurrencyCode string `json:"currencyCode"`
+		} `json:"maxAmount"`
+		SupportedCardTypes struct {
+			Credit        bool `json:"credit"`
+			Debit         bool `json:"debit"`
+			DeferredDebit bool `json:"deferredDebit"`
+			Prepaid       bool `json:"prepaid"`
+			Unknown       bool `json:"unknown"`
+		} `json:"supportedCardTypes"`
+	} `json:"storeAndForward"`
+}
+
 // TerminalSettingsResponse declare response with terminal settings.
 type TerminalSettingsResponse struct { //nolint:govet
+	CardholderReceipt struct {
+		HeaderForAuthorizedReceipt string `json:"headerForAuthorizedReceipt"`
+	} `json:"cardholderReceipt"`
+	Gratuities []struct { //nolint:govet
+		Currency                string   `json:"currency"`
+		UsePredefinedTipEntries bool     `json:"usePredefinedTipEntries"`
+		PredefinedTipEntries    []string `json:"predefinedTipEntries"`
+		AllowCustomAmount       bool     `json:"allowCustomAmount"`
+	} `json:"gratuities"`
+	Nexo struct { //nolint:govet
+		DisplayUrls struct {
+			LocalUrls []struct {
+				Password string `json:"password"`
+				URL      string `json:"url"`
+				Username string `json:"username"`
+			} `json:"localUrls"`
+			PublicUrls []struct {
+				Password string `json:"password"`
+				URL      string `json:"url"`
+				Username string `json:"username"`
+			} `json:"publicUrls"`
+		} `json:"displayUrls"`
+		EncryptionKey struct {
+			Identifier string `json:"identifier"`
+			Passphrase string `json:"passphrase"`
+			Version    int    `json:"version"`
+		} `json:"encryptionKey"`
+		EventUrls struct {
+			EventLocalUrls []struct {
+				Password string `json:"password"`
+				URL      string `json:"url"`
+				Username string `json:"username"`
+			} `json:"eventLocalUrls"`
+			EventPublicUrls []struct {
+				Password string `json:"password"`
+				URL      string `json:"url"`
+				Username string `json:"username"`
+			} `json:"eventPublicUrls"`
+		} `json:"eventUrls"`
+		Notification struct { //nolint:govet
+			Category   string `json:"category"`
+			Details    string `json:"details"`
+			Enabled    bool   `json:"enabled"`
+			ShowButton bool   `json:"showButton"`
+			Title      string `json:"title"`
+		} `json:"notification"`
+	} `json:"nexo"`
+	Opi struct {
+		EnablePayAtTable bool `json:"enablePayAtTable"`
+	} `json:"opi"`
+	ReceiptPrinting struct {
+		MerchantApproved        bool `json:"merchantApproved"`
+		MerchantRefused         bool `json:"merchantRefused"`
+		MerchantCancelled       bool `json:"merchantCancelled"`
+		MerchantRefundApproved  bool `json:"merchantRefundApproved"`
+		MerchantRefundRefused   bool `json:"merchantRefundRefused"`
+		MerchantCaptureApproved bool `json:"merchantCaptureApproved"`
+		MerchantCaptureRefused  bool `json:"merchantCaptureRefused"`
+		MerchantVoid            bool `json:"merchantVoid"`
+		ShopperApproved         bool `json:"shopperApproved"`
+		ShopperRefused          bool `json:"shopperRefused"`
+		ShopperCancelled        bool `json:"shopperCancelled"`
+		ShopperRefundApproved   bool `json:"shopperRefundApproved"`
+		ShopperRefundRefused    bool `json:"shopperRefundRefused"`
+		ShopperCaptureApproved  bool `json:"shopperCaptureApproved"`
+		ShopperCaptureRefused   bool `json:"shopperCaptureRefused"`
+		ShopperVoid             bool `json:"shopperVoid"`
+	} `json:"receiptPrinting"`
+	Signature struct {
+		AskSignatureOnScreen bool `json:"askSignatureOnScreen"`
+		SkipSignature        bool `json:"skipSignature"`
+	} `json:"signature"`
 	Timeouts struct {
 		FromActiveToSleep int `json:"fromActiveToSleep"`
 	} `json:"timeouts"`
 	Hardware struct {
-		DisplayMaximumBackLight int `json:"displayMaximumBackLight"`
-		RestartHour             int `json:"restartHour"`
+		RestartHour int `json:"restartHour"`
 	} `json:"hardware"`
 	Connectivity struct {
-		Status string `json:"simcardStatus"`
+		SimcardStatus string `json:"simcardStatus"`
 	} `json:"connectivity"`
+	OfflineProcessing struct { //nolint:govet
+		ChipFloorLimit     int        `json:"chipFloorLimit"`
+		OfflineSwipeLimits []struct { //nolint:govet
+			Amount       int    `json:"amount"`
+			CurrencyCode string `json:"currencyCode"`
+		} `json:"offlineSwipeLimits"`
+	} `json:"offlineProcessing"`
+	Passcodes struct {
+		AdminMenuPin string `json:"adminMenuPin"`
+		TxMenuPin    string `json:"txMenuPin"`
+	} `json:"passcodes"`
+	Standalone struct { //nolint:govet
+		EnableStandalone bool   `json:"enableStandalone"`
+		CurrencyCode     string `json:"currencyCode"`
+	} `json:"standalone"`
+	StoreAndForward struct { //nolint:govet
+		MaxPayments int        `json:"maxPayments"`
+		MaxAmount   []struct { //nolint:govet
+			Amount       int    `json:"amount"`
+			CurrencyCode string `json:"currencyCode"`
+		} `json:"maxAmount"`
+		SupportedCardTypes struct {
+			Credit        bool `json:"credit"`
+			Debit         bool `json:"debit"`
+			DeferredDebit bool `json:"deferredDebit"`
+			Prepaid       bool `json:"prepaid"`
+			Unknown       bool `json:"unknown"`
+		} `json:"supportedCardTypes"`
+	} `json:"storeAndForward"`
+	Payment struct {
+		ContactlessCurrency string `json:"contactlessCurrency"`
+	} `json:"payment"`
+	Localization struct {
+		Language string `json:"language"`
+		Timezone string `json:"timezone"`
+	} `json:"localization"`
+	TerminalInstructions struct {
+		AdyenAppRestart bool `json:"adyenAppRestart"`
+	} `json:"terminalInstructions"`
 }
 
-// GetStoreTerminalsResponse declare response for get store terminals request.
-type GetStoreTerminalsResponse struct { //nolint:govet
+// SearchTerminalsResponse declare response for search terminals request.
+type SearchTerminalsResponse struct { //nolint:govet
 	ItemsTotal int `json:"itemsTotal"`
 	PagesTotal int `json:"pagesTotal"`
 	Data       []struct {
@@ -149,8 +284,8 @@ type GetStoreTerminalsResponse struct { //nolint:govet
 	} `json:"data"`
 }
 
-// GetAndroidAppsResponse declare response for get android apps request.
-type GetAndroidAppsResponse struct {
+// SearchAndroidAppsResponse declare response for get android apps request.
+type SearchAndroidAppsResponse struct {
 	Data []struct { //nolint:govet
 		ID          string `json:"id"`
 		PackageName string `json:"packageName"`

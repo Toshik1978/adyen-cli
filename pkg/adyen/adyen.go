@@ -149,8 +149,8 @@ func (a *API) UpdateSplitConfiguration(
 	return nil
 }
 
-// GetAllStores gets store's management IDs by store ID.
-func (a *API) GetAllStores(ctx context.Context, storeID string) (*GetAllStoresResponse, error) {
+// SearchStores gets store's management IDs by store ID.
+func (a *API) SearchStores(ctx context.Context, storeID string) (*SearchStoresResponse, error) { //nolint:dupl
 	a.logger.
 		With(zap.String("StoreID", storeID)).
 		Info(">> Get All Store")
@@ -165,7 +165,7 @@ func (a *API) GetAllStores(ctx context.Context, storeID string) (*GetAllStoresRe
 		return nil, fmt.Errorf("failed to get all stores: %w", err)
 	}
 
-	var stores GetAllStoresResponse
+	var stores SearchStoresResponse
 	if err := json.Unmarshal(response, &stores); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
 	}
@@ -244,6 +244,34 @@ func (a *API) ReassignTerminal(ctx context.Context, terminalID, merchantID, stor
 	return nil
 }
 
+// TerminalSettings gets terminal settings.
+func (a *API) TerminalSettings(ctx context.Context, terminalID string) (*TerminalSettingsResponse, error) { //nolint:dupl
+	a.logger.
+		With(zap.String("TerminalID", terminalID)).
+		Info(">> Get Terminal Settings")
+
+	response, err := a.call(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("https://%s/v3/terminals/%s/terminalSettings", a.mgmtURL, terminalID),
+		a.mgmtKey,
+		nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get terminal settings: %w", err)
+	}
+
+	var settings TerminalSettingsResponse
+	if err := json.Unmarshal(response, &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("TerminalID", terminalID)).
+		With(zap.Any("Response", settings)).
+		Info("<< Get Terminal Settings")
+	return &settings, nil
+}
+
 // SetSimCardStatus set sim card status.
 func (a *API) SetSimCardStatus(ctx context.Context, terminalID string, disable bool) error {
 	a.logger.
@@ -281,8 +309,38 @@ func (a *API) SetSimCardStatus(ctx context.Context, terminalID string, disable b
 	return nil
 }
 
-// GetStoreTerminals gets the list of store terminals.
-func (a *API) GetStoreTerminals(ctx context.Context, storeID, searchQuery string) (*GetStoreTerminalsResponse, error) { //nolint:dupl
+// DisableOfflinePayments disables offline payments per device.
+func (a *API) DisableOfflinePayments(ctx context.Context, terminalID string, settings SetOfflinePaymentsRequest) error {
+	a.logger.
+		With(zap.String("TerminalID", terminalID)).
+		With(zap.Any("Settings", settings)).
+		Info(">> Disable Offline Payments")
+
+	response, err := a.call(
+		ctx,
+		http.MethodPatch,
+		fmt.Sprintf("https://%s/v3/terminals/%s/terminalSettings", a.mgmtURL, terminalID),
+		a.mgmtKey,
+		&settings)
+	if err != nil {
+		return fmt.Errorf("failed to disable offline payments: %w", err)
+	}
+
+	var updated TerminalSettingsResponse
+	if err := json.Unmarshal(response, &updated); err != nil {
+		return fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("TerminalID", terminalID)).
+		With(zap.Any("Settings", settings)).
+		With(zap.Any("Response", updated)).
+		Info("<< Disable Offline Payments")
+	return nil
+}
+
+// SearchTerminals gets the list of terminals.
+func (a *API) SearchTerminals(ctx context.Context, storeID, searchQuery string) (*SearchTerminalsResponse, error) { //nolint:dupl
 	a.logger.
 		With(zap.String("StoreID", storeID)).
 		With(zap.String("SearchQuery", searchQuery)).
@@ -298,7 +356,7 @@ func (a *API) GetStoreTerminals(ctx context.Context, storeID, searchQuery string
 		return nil, fmt.Errorf("failed to get all terminals: %w", err)
 	}
 
-	var terminals GetStoreTerminalsResponse
+	var terminals SearchTerminalsResponse
 	if err := json.Unmarshal(response, &terminals); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
 	}
@@ -311,8 +369,8 @@ func (a *API) GetStoreTerminals(ctx context.Context, storeID, searchQuery string
 	return &terminals, nil
 }
 
-// GetAndroidApps gets the list of android apps.
-func (a *API) GetAndroidApps(ctx context.Context, companyID, packageName string) (*GetAndroidAppsResponse, error) { //nolint:dupl
+// SearchAndroidApps gets the list of android apps.
+func (a *API) SearchAndroidApps(ctx context.Context, companyID, packageName string) (*SearchAndroidAppsResponse, error) { //nolint:dupl
 	a.logger.
 		With(zap.String("CompanyID", companyID)).
 		With(zap.String("PackageName", packageName)).
@@ -328,7 +386,7 @@ func (a *API) GetAndroidApps(ctx context.Context, companyID, packageName string)
 		return nil, fmt.Errorf("failed to get all apps: %w", err)
 	}
 
-	var apps GetAndroidAppsResponse
+	var apps SearchAndroidAppsResponse
 	if err := json.Unmarshal(response, &apps); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
 	}

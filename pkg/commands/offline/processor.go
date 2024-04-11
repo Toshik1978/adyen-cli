@@ -1,4 +1,4 @@
-package cellular
+package offline
 
 import (
 	"context"
@@ -21,14 +21,13 @@ type Processor struct {
 	client      *http.Client
 	adyenAPI    *adyen.API
 	csvFilePath string
-	disable     bool
 	dryRun      bool
 }
 
 // New creates new instance of Processor.
 func New(
 	logger *zap.Logger, client *http.Client, config *commands.Config,
-	csvFilePath string, disable, production, dryRun bool) *Processor {
+	csvFilePath string, production, dryRun bool) *Processor {
 	var calURL, calKey, mgmtURL, mgmtKey string
 	switch {
 	case production:
@@ -50,12 +49,11 @@ func New(
 		client:      client,
 		adyenAPI:    adyen.New(logger, client, calURL, calKey, mgmtURL, mgmtKey),
 		csvFilePath: csvFilePath,
-		disable:     disable,
 		dryRun:      dryRun,
 	}
 }
 
-// Run runs parsing & cellular processing.
+// Run runs parsing & offline payments processing.
 func (p *Processor) Run(ctx context.Context) error {
 	file, err := os.OpenFile(p.csvFilePath, os.O_RDONLY, os.ModePerm)
 	if err != nil {
@@ -86,7 +84,7 @@ func (p *Processor) Run(ctx context.Context) error {
 			With(zap.Int("Success Count", successCnt)).
 			With(zap.Int("Failure Count", failureCnt)).
 			Error("Failed to process terminals")
-		return fmt.Errorf("failed to process cellular: %w", errors.Join(errs...))
+		return fmt.Errorf("failed to process offline payments: %w", errors.Join(errs...))
 	}
 
 	p.logger.
@@ -96,12 +94,49 @@ func (p *Processor) Run(ctx context.Context) error {
 }
 
 func (p *Processor) process(ctx context.Context, record *Record) error {
+	terminalID := record.TerminalID
+	if record.Serial != "" {
+		// Get terminal ID by serial number
+		terminals, err := p.adyenAPI.SearchTerminals(ctx, "", record.Serial)
+		if err != nil {
+			return fmt.Errorf("failed to process terminals: %w", err)
+		}
+		if terminals.ItemsTotal != 1 {
+			return fmt.Errorf("expected 1 terminal, got %d", terminals.ItemsTotal)
+		}
+		terminalID = terminals.Data[0].ID
+	}
+
+	// Get existing terminal settings
+	settings, err := p.adyenAPI.TerminalSettings(ctx, terminalID)
+	if err != nil {
+		return fmt.Errorf("failed to process settings: %w", err)
+	}
 	if p.dryRun {
 		return nil
 	}
 
-	if err := p.adyenAPI.SetSimCardStatus(ctx, record.TerminalID, p.disable); err != nil {
-		return fmt.Errorf("failed to process cellular: %w", err)
+	// Update offline payments structure and push it to Adyen
+	// We should set all limits to 0
+	update := adyen.SetOfflinePaymentsRequest{}
+	update.OfflineProcessing = settings.OfflineProcessing
+	update.StoreAndForward = settings.StoreAndForward
+	p.setZero(&update)
+
+	if err := p.adyenAPI.DisableOfflinePayments(ctx, terminalID, update); err != nil {
+		return fmt.Errorf("failed to process offline payments: %w", err)
 	}
 	return nil
+}
+
+func (p *Processor) setZero(update *adyen.SetOfflinePaymentsRequest) {
+	update.OfflineProcessing.ChipFloorLimit = 0
+	for i := range update.OfflineProcessing.OfflineSwipeLimits {
+		update.OfflineProcessing.OfflineSwipeLimits[i].Amount = 0
+	}
+
+	update.StoreAndForward.MaxPayments = 0
+	for i := range update.StoreAndForward.MaxAmount {
+		update.StoreAndForward.MaxAmount[i].Amount = 0
+	}
 }
