@@ -107,12 +107,12 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 	var terminalIDs []string
 	if record.StoreID != "" {
 		// Need to convert Adyen Store GUID to the management ID.
-		storeID, err := p.storeID(ctx, record.StoreID)
+		storeID, err := p.searchStore(ctx, record.StoreID)
 		if err != nil {
 			return fmt.Errorf("failed to get store ID by UUID: %w", err)
 		}
 
-		ids, err := p.terminalIDs(ctx, storeID, record.TerminalFilter)
+		ids, err := p.searchTerminals(ctx, storeID, record.TerminalFilter)
 		if err != nil {
 			return fmt.Errorf("failed to get terminals: %w", err)
 		}
@@ -147,7 +147,7 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 	return nil
 }
 
-func (p *Processor) storeID(ctx context.Context, storeID string) (string, error) {
+func (p *Processor) searchStore(ctx context.Context, storeID string) (string, error) {
 	stores, err := p.adyenAPI.SearchStores(ctx, storeID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get all stores: %w", err)
@@ -161,7 +161,7 @@ func (p *Processor) storeID(ctx context.Context, storeID string) (string, error)
 	return stores.Data[0].ID, nil
 }
 
-func (p *Processor) terminalIDs(ctx context.Context, storeID, searchQuery string) ([]string, error) {
+func (p *Processor) searchTerminals(ctx context.Context, storeID, searchQuery string) ([]string, error) {
 	terminals, err := p.adyenAPI.SearchTerminals(ctx, storeID, searchQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get terminals: %w", err)

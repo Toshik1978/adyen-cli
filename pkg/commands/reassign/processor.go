@@ -99,27 +99,62 @@ func (p *Processor) Run(ctx context.Context) error {
 }
 
 func (p *Processor) process(ctx context.Context, record *Record) error {
+	terminalID, err := p.searchTerminal(ctx, record)
+	if err != nil {
+		return fmt.Errorf("failed to search terminal: %w", err)
+	}
+
+	storeID, err := p.searchStore(ctx, record)
+	if err != nil {
+		return fmt.Errorf("failed to search store: %w", err)
+	}
+
 	if p.dryRun {
 		return nil
 	}
-
-	var storeID string
-	if record.StoreID != "" {
-		// Need to convert Adyen Store GUID to the management ID.
-		stores, err := p.adyenAPI.SearchStores(ctx, record.StoreID)
-		if err != nil {
-			return fmt.Errorf("failed to get all stores: %w", err)
-		}
-		if stores.ItemsTotal != 1 || len(stores.Data) != 1 {
-			return ErrInvalidResponse
-		}
-		if stores.Data[0].Reference != record.StoreID {
-			return fmt.Errorf("store ID not found: %s %s", stores.Data[0].Reference, record.StoreID)
-		}
-		storeID = stores.Data[0].ID
-	}
-	if err := p.adyenAPI.ReassignTerminal(ctx, record.TerminalID, record.MerchantID, storeID); err != nil {
+	if err := p.adyenAPI.ReassignTerminal(ctx, terminalID, record.MerchantID, storeID); err != nil {
 		return fmt.Errorf("failed to process terminal re-assignment: %w", err)
 	}
 	return nil
+}
+
+func (p *Processor) searchTerminal(ctx context.Context, record *Record) (string, error) {
+	terminalID := record.TerminalID
+	if terminalID == "" && record.Serial != "" {
+		// Get terminal ID by serial number
+		terminals, err := p.adyenAPI.SearchTerminals(ctx, "", record.Serial)
+		if err != nil {
+			return "", fmt.Errorf("failed to process terminals: %w", err)
+		}
+		if terminals.ItemsTotal != 1 {
+			return "", fmt.Errorf("expected 1 terminal, got %d", terminals.ItemsTotal)
+		}
+		terminalID = terminals.Data[0].ID
+	}
+	if terminalID == "" {
+		return "", fmt.Errorf("no terminal id and serial number defined")
+	}
+	return terminalID, nil
+}
+
+func (p *Processor) searchStore(ctx context.Context, record *Record) (string, error) {
+	storeID := record.StoreID
+	if storeID != "" {
+		// Need to convert Adyen Store GUID to the management ID.
+		stores, err := p.adyenAPI.SearchStores(ctx, record.StoreID)
+		if err != nil {
+			return "", fmt.Errorf("failed to get all stores: %w", err)
+		}
+		if stores.ItemsTotal != 1 || len(stores.Data) != 1 {
+			return "", ErrInvalidResponse
+		}
+		if stores.Data[0].Reference != record.StoreID {
+			return "", fmt.Errorf("store ID not found: %s %s", stores.Data[0].Reference, record.StoreID)
+		}
+		storeID = stores.Data[0].ID
+	}
+	if storeID == "" {
+		return "", fmt.Errorf("no store id defined")
+	}
+	return storeID, nil
 }

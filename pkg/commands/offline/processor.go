@@ -95,7 +95,7 @@ func (p *Processor) Run(ctx context.Context) error {
 
 func (p *Processor) process(ctx context.Context, record *Record) error {
 	terminalID := record.TerminalID
-	if record.Serial != "" {
+	if terminalID == "" && record.Serial != "" {
 		// Get terminal ID by serial number
 		terminals, err := p.adyenAPI.SearchTerminals(ctx, "", record.Serial)
 		if err != nil {
@@ -106,14 +106,14 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 		}
 		terminalID = terminals.Data[0].ID
 	}
+	if terminalID == "" {
+		return fmt.Errorf("no terminal id and serial number defined")
+	}
 
 	// Get existing terminal settings
 	settings, err := p.adyenAPI.TerminalSettings(ctx, terminalID)
 	if err != nil {
 		return fmt.Errorf("failed to process settings: %w", err)
-	}
-	if p.dryRun {
-		return nil
 	}
 
 	// Update offline payments structure and push it to Adyen
@@ -123,6 +123,9 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 	update.StoreAndForward = settings.StoreAndForward
 	p.setZero(&update)
 
+	if p.dryRun {
+		return nil
+	}
 	if err := p.adyenAPI.DisableOfflinePayments(ctx, terminalID, update); err != nil {
 		return fmt.Errorf("failed to process offline payments: %w", err)
 	}

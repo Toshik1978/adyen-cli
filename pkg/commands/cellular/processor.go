@@ -96,11 +96,26 @@ func (p *Processor) Run(ctx context.Context) error {
 }
 
 func (p *Processor) process(ctx context.Context, record *Record) error {
+	terminalID := record.TerminalID
+	if terminalID == "" && record.Serial != "" {
+		// Get terminal ID by serial number
+		terminals, err := p.adyenAPI.SearchTerminals(ctx, "", record.Serial)
+		if err != nil {
+			return fmt.Errorf("failed to process terminals: %w", err)
+		}
+		if terminals.ItemsTotal != 1 {
+			return fmt.Errorf("expected 1 terminal, got %d", terminals.ItemsTotal)
+		}
+		terminalID = terminals.Data[0].ID
+	}
+	if terminalID == "" {
+		return fmt.Errorf("no terminal id and serial number defined")
+	}
+
 	if p.dryRun {
 		return nil
 	}
-
-	if err := p.adyenAPI.SetSimCardStatus(ctx, record.TerminalID, p.disable); err != nil {
+	if err := p.adyenAPI.SetSimCardStatus(ctx, terminalID, p.disable); err != nil {
 		return fmt.Errorf("failed to process cellular: %w", err)
 	}
 	return nil
