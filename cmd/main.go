@@ -20,6 +20,7 @@ import (
 	"github.com/Toshik1978/csv2adyen/pkg/commands/close"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/install"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/link"
+	"github.com/Toshik1978/csv2adyen/pkg/commands/method"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/offline"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/reassign"
 )
@@ -150,6 +151,33 @@ func newApp(logger *zap.Logger, client *http.Client, config *commands.Config) *c
 					p := close.New(
 						logger, client, config,
 						c.String("csv"), c.Bool("store"), c.Bool("prod"), c.Bool("dry-run"))
+					return p.Run(context.Background())
+				},
+			},
+			{
+				Name:    "methods",
+				Aliases: []string{"m"},
+				Usage:   "Add payment methods",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:      "csv",
+						Required:  true,
+						TakesFile: true,
+						Usage:     "the full path to CSV file, containing the required data to add",
+					},
+					&cli.BoolFlag{
+						Name:  "prod",
+						Usage: "use this parameter if you want to run on production environment",
+					},
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "use this parameter if you want to do dry run (no changes will apply)",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					p := method.New(
+						logger, client, config,
+						c.String("csv"), c.Bool("prod"), c.Bool("dry-run"))
 					return p.Run(context.Background())
 				},
 			},

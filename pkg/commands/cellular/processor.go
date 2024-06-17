@@ -70,7 +70,7 @@ func (p *Processor) Run(ctx context.Context) error {
 
 	var successCnt int
 	var failureCnt int
-	errs := make([]error, 0, 2)
+	errs := make([]error, 0, len(records))
 	for _, record := range records {
 		if err := p.process(ctx, record); err != nil {
 			failureCnt++

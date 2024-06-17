@@ -1,4 +1,4 @@
-package close
+package method
 
 import (
 	"context"
@@ -33,7 +33,7 @@ type Processor struct {
 // New creates new instance of Processor.
 func New(
 	logger *zap.Logger, client *http.Client, config *commands.Config,
-	csvFilePath string, shouldCloseStore, production, dryRun bool) *Processor {
+	csvFilePath string, production, dryRun bool) *Processor {
 	var calURL, calKey, mgmtURL, mgmtKey string
 	switch {
 	case production:
@@ -51,12 +51,11 @@ func New(
 	gocsv.SetHeaderNormalizer(strings.ToUpper)
 
 	return &Processor{
-		logger:           logger,
-		client:           client,
-		adyenAPI:         adyen.New(logger, client, calURL, calKey, mgmtURL, mgmtKey),
-		csvFilePath:      csvFilePath,
-		shouldCloseStore: shouldCloseStore,
-		dryRun:           dryRun,
+		logger:      logger,
+		client:      client,
+		adyenAPI:    adyen.New(logger, client, calURL, calKey, mgmtURL, mgmtKey),
+		csvFilePath: csvFilePath,
+		dryRun:      dryRun,
 	}
 }
 
@@ -91,7 +90,7 @@ func (p *Processor) Run(ctx context.Context) error {
 			With(zap.Int("Success Count", successCnt)).
 			With(zap.Int("Failure Count", failureCnt)).
 			Error("Failed to process restaurants")
-		return fmt.Errorf("failed to process close record: %w", errors.Join(errs...))
+		return fmt.Errorf("failed to process add payment methods record: %w", errors.Join(errs...))
 	}
 
 	p.logger.
@@ -101,58 +100,42 @@ func (p *Processor) Run(ctx context.Context) error {
 }
 
 func (p *Processor) process(ctx context.Context, record *Record) error {
-	accountHolder, err := p.adyenAPI.AccountHolder(ctx, record.AccountHolderCode)
-	if err != nil {
-		return fmt.Errorf("failed to get account holder: %w", err)
-	}
-	if err := p.checkAccountHolder(accountHolder, record.StoreID); err != nil {
-		return fmt.Errorf("failed to close account holder: %w", err)
-	}
-	if !p.dryRun {
-		if p.shouldCloseStore {
-			if err := p.closeStore(ctx, record.StoreID); err != nil {
-				return fmt.Errorf("failed to close the store (%s): %w", record.StoreID, err)
-			}
-		}
-
-		if err := p.adyenAPI.CloseAccountHolder(ctx, record.AccountHolderCode); err != nil {
-			return fmt.Errorf("failed to close account holder: %w", err)
-		}
-	}
-	return nil
-}
-
-func (p *Processor) checkAccountHolder(accountHolder *adyen.GetAccountHolderResponse, storeID string) error {
-	if len(accountHolder.AccountHolderDetails.StoreDetails) != len(accountHolder.Accounts) {
-		return ErrInvalidResponse
-	}
-	if len(accountHolder.AccountHolderDetails.StoreDetails) != 1 {
-		return ErrInvalidResponse
-	}
-	if accountHolder.AccountHolderDetails.StoreDetails[0].StoreID != storeID {
-		return fmt.Errorf("store ID not found: %s %s", accountHolder.AccountHolderDetails.StoreDetails[0].StoreID, storeID)
-	}
-	return nil
-}
-
-func (p *Processor) closeStore(ctx context.Context, storeID string) error {
-	stores, err := p.adyenAPI.SearchStores(ctx, storeID)
+	stores, err := p.adyenAPI.SearchStores(ctx, record.StoreID)
 	if err != nil {
 		return fmt.Errorf("failed to get all stores: %w", err)
 	}
 	if stores.ItemsTotal != 1 || len(stores.Data) != 1 {
 		return ErrInvalidResponse
 	}
-	if stores.Data[0].Reference != storeID {
-		return fmt.Errorf("store ID not found: %s %s", stores.Data[0].Reference, storeID)
+	if stores.Data[0].Reference != record.StoreID {
+		return fmt.Errorf("store ID not found: %s %s", stores.Data[0].Reference, record.StoreID)
+	}
+	if len(stores.Data[0].BusinessLineIDs) != 1 {
+		return fmt.Errorf("store does not have one business line: %d", len(stores.Data[0].BusinessLineIDs))
 	}
 
-	if err := p.adyenAPI.SetStoreStatus(ctx, stores.Data[0].ID, "inactive"); err != nil {
-		return fmt.Errorf("failed to set inactive status: %w", err)
+	if !p.dryRun {
+		if err := p.addPaymentMethods(ctx, &stores.Data[0], record.PaymentMethods, record.Currency); err != nil {
+			return fmt.Errorf("failed to add payment methods: %w", err)
+		}
 	}
-	if err := p.adyenAPI.SetStoreStatus(ctx, stores.Data[0].ID, "closed"); err != nil {
-		return fmt.Errorf("failed to set closed status: %w", err)
-	}
+	return nil
+}
 
+func (p *Processor) addPaymentMethods(
+	ctx context.Context, store *adyen.GetStoreResponse, methods, currency string,
+) error {
+	ar := strings.Split(methods, "|")
+	errs := make([]error, 0, len(ar))
+	for _, method := range ar {
+		_, err :=
+			p.adyenAPI.AddPaymentMethod(ctx, store.MerchantID, store.ID, store.BusinessLineIDs[0], method, currency)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to add payment methods: %w", errors.Join(errs...))
+	}
 	return nil
 }

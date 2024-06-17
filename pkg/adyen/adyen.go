@@ -207,6 +207,50 @@ func (a *API) SetStoreStatus(ctx context.Context, storeMgmtID, status string) er
 	return nil
 }
 
+// AddPaymentMethod adds payment method to the store.
+func (a *API) AddPaymentMethod(
+	ctx context.Context, merchantID, storeID, businessLineID, method, currency string,
+) (*AddPaymentMethodResponse, error) { //nolint:dupl
+	a.logger.
+		With(zap.String("MerchantID", merchantID)).
+		With(zap.String("StoreID", storeID)).
+		With(zap.String("BusinessLineID", businessLineID)).
+		With(zap.String("Method", method)).
+		With(zap.String("Currency", currency)).
+		Info(">> Add Payment Method")
+
+	req := AddPaymentMethodRequest{
+		Type:           method,
+		BusinessLineID: businessLineID,
+		StoreIDs:       []string{storeID},
+		Currencies:     []string{currency},
+	}
+	response, err := a.call(
+		ctx,
+		http.MethodPost,
+		fmt.Sprintf("https://%s/v3/merchants/%s/paymentMethodSettings", a.mgmtURL, merchantID),
+		a.mgmtKey,
+		&req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add payment method: %w", err)
+	}
+
+	var resp AddPaymentMethodResponse
+	if err := json.Unmarshal(response, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("MerchantID", merchantID)).
+		With(zap.String("StoreID", storeID)).
+		With(zap.String("BusinessLineID", businessLineID)).
+		With(zap.String("Method", method)).
+		With(zap.String("Currency", currency)).
+		With(zap.Any("Response", resp)).
+		Info("<< Add Payment Method")
+	return &resp, nil
+}
+
 // ReassignTerminal reassign terminal to store or merchant (always inventory)
 func (a *API) ReassignTerminal(ctx context.Context, terminalID, merchantID, storeID string) error {
 	a.logger.
@@ -464,17 +508,26 @@ func (a *API) call(ctx context.Context, method, url, key string, data interface{
 		return nil, fmt.Errorf("failed to call Adyen: %w", err)
 	}
 	if response != nil && response.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(response.Body)
-		a.logger.
-			With(zap.ByteString("Response", body)).
-			Error("Failed call")
-		return nil, fmt.Errorf("failed to call Adyen, HTTP status: %d", response.StatusCode)
+		return nil, a.createError(response.Body)
 	}
 	if response == nil {
 		return nil, fmt.Errorf("failed to call Adyen, surprising nil response")
 	}
 
 	return io.ReadAll(response.Body)
+}
+
+func (a *API) createError(response io.Reader) error {
+	body, _ := io.ReadAll(response)
+	a.logger.
+		With(zap.ByteString("Response", body)).
+		Error("Failed call")
+
+	var adyenErr Error
+	if err := json.Unmarshal(body, &adyenErr); err != nil {
+		return fmt.Errorf("failed to unmarshal Adyen error: %w", err)
+	}
+	return fmt.Errorf("failed to call Adyen: %s (%s), HTTP status: %d", adyenErr.Title, adyenErr.Detail, adyenErr.Status)
 }
 
 func closeResponse(response *http.Response) {

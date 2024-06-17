@@ -33,6 +33,20 @@ This application was designed to automate some routine operations over Adyen acc
 4. Run the process: `adyen-cli close --csv <Path to file> --prod`.
 5. Run `adyen-cli -h` if you have questions.
 
+### Add payment methods to the store
+
+1. Download the version relevant to your PC from the [Releases](https://github.com/Toshik1978/adyen-cli/releases) page.
+   1. You can check the signature of the downloaded file using the relevant minisign file and public key: `RWTDIoCdDlDV5mgrQt3IK1D3ZOVZMtMpxrOO+yZgFvBP1Sv/D1BXhEkE`.
+2. Create the copy of `.env.dist` file locally.
+2. Fill it with the actual keys from Adyen (production / test / etc).
+3. Create the CSV file with the information about stores.
+   1. CSV should contain 3 columns - 'Store ID', 'Payment Methods', 'Currency'.
+   2. Payment methods is the list of payment methods you want to add to the store. Methods can be separated with |.
+   3. The possible methods are: "visa|discover|diners|mc|jcb|cup|amex|interac_card".
+   4. Currency can be EUR, CAD or GBP.
+4. Run the process: `adyen-cli methods --csv <Path to file> --prod` if you want to add payment methods.
+5. Run `adyen-cli -h` if you have questions.
+
 ### Re-assign terminals
 
 1. Download the version relevant to your PC from the [Releases](https://github.com/Toshik1978/adyen-cli/releases) page.

@@ -4,6 +4,15 @@ import "time"
 
 // Adyen API types
 
+// Error declare Adyen API error response.
+type Error struct {
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	Detail    string `json:"detail"`
+	ErrorCode string `json:"errorCode"`
+	Status    int    `json:"status"`
+}
+
 // AccountHolderRequest declare general account holder request.
 type AccountHolderRequest struct {
 	AccountHolderCode string `json:"accountHolderCode"`
@@ -71,17 +80,38 @@ type SetStoreStatusRequest struct {
 }
 
 // GetStoreResponse declare get store information response.
-type GetStoreResponse struct {
-	ID         string `json:"id"`
-	MerchantID string `json:"merchantId"`
-	Reference  string `json:"reference"`
-	Status     string `json:"status"`
+type GetStoreResponse struct { //nolint:govet
+	ID              string   `json:"id"`
+	MerchantID      string   `json:"merchantId"`
+	BusinessLineIDs []string `json:"businessLineIds"`
+	Reference       string   `json:"reference"`
+	Status          string   `json:"status"`
 }
 
 // SearchStoresResponse declare get all stores response.
 type SearchStoresResponse struct {
 	Data       []GetStoreResponse `json:"data"`
 	ItemsTotal int64              `json:"itemsTotal"`
+}
+
+// AddPaymentMethodRequest declare add payment method request.
+type AddPaymentMethodRequest struct {
+	Type           string   `json:"type"`
+	BusinessLineID string   `json:"businessLineId"`
+	StoreIDs       []string `json:"storeIds"`
+	Currencies     []string `json:"currencies"`
+}
+
+// AddPaymentMethodResponse declare add payment method response.
+type AddPaymentMethodResponse struct { //nolint:govet
+	ID                 string   `json:"id"`
+	Type               string   `json:"type"`
+	BusinessLineID     string   `json:"businessLineId"`
+	StoreIDs           []string `json:"storeIds"`
+	Currencies         []string `json:"currencies"`
+	Enabled            bool     `json:"enabled"`
+	Allowed            bool     `json:"allowed"`
+	VerificationStatus string   `json:"verificationStatus"`
 }
 
 // ReassignTerminalRequest declare reassign terminal request.
