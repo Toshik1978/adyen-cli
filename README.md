@@ -47,6 +47,30 @@ This application was designed to automate some routine operations over Adyen acc
 4. Run the process: `adyen-cli methods --csv <Path to file> --prod` if you want to add payment methods.
 5. Run `adyen-cli -h` if you have questions.
 
+### Fix sweep configuration
+
+1. Download the version relevant to your PC from the [Releases](https://github.com/Toshik1978/adyen-cli/releases) page.
+   1. You can check the signature of the downloaded file using the relevant minisign file and public key: `RWTDIoCdDlDV5mgrQt3IK1D3ZOVZMtMpxrOO+yZgFvBP1Sv/D1BXhEkE`.
+2. Create the copy of `.env.dist` file locally.
+2. Fill it with the actual keys from Adyen (production / test / etc).
+3. Create the CSV file with the information about balance account holders.
+   1. CSV should contain one of 2 columns - 'Account Holder ID' or 'Balance ID'.
+4. Run the process: `adyen-cli sweep --csv <Path to file> --prod` if you want to fix broken sweep configurations.
+5. Run `adyen-cli -h` if you have questions.
+
+### Change store sales close time
+
+1. Download the version relevant to your PC from the [Releases](https://github.com/Toshik1978/adyen-cli/releases) page.
+   1. You can check the signature of the downloaded file using the relevant minisign file and public key: `RWTDIoCdDlDV5mgrQt3IK1D3ZOVZMtMpxrOO+yZgFvBP1Sv/D1BXhEkE`.
+2. Create the copy of `.env.dist` file locally.
+2. Fill it with the actual keys from Adyen (production / test / etc).
+3. Create the CSV file with the information about stores.
+   1. CSV should contain 3 columns - 'Account Holder ID' or 'Balance ID', 'Close Time' and 'Delays'.
+   2. 'Close Time' must be in format "HH:MM" and "HH" must be between 0 and 7.
+   3. Delays defines you settlement delay in days.
+4. Run the process: `adyen-cli time --csv <Path to file> --prod` if you want to change sales close time.
+5. Run `adyen-cli -h` if you have questions.
+
 ### Re-assign terminals
 
 1. Download the version relevant to your PC from the [Releases](https://github.com/Toshik1978/adyen-cli/releases) page.

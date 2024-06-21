@@ -1,4 +1,4 @@
-package method
+package sweep
 
 import (
 	"context"
@@ -67,7 +67,7 @@ func New(
 	}
 }
 
-// Run runs add payment methods to stores.
+// Run runs fix sweep configuration.
 func (p *Processor) Run(ctx context.Context) error {
 	file, err := os.OpenFile(p.csvFilePath, os.O_RDONLY, os.ModePerm)
 	if err != nil {
@@ -98,7 +98,7 @@ func (p *Processor) Run(ctx context.Context) error {
 			With(zap.Int("Success Count", successCnt)).
 			With(zap.Int("Failure Count", failureCnt)).
 			Error("Failed to process restaurants")
-		return fmt.Errorf("failed to process add payment methods record: %w", errors.Join(errs...))
+		return fmt.Errorf("failed to process fix sweep configuration record: %w", errors.Join(errs...))
 	}
 
 	p.logger.
@@ -108,42 +108,70 @@ func (p *Processor) Run(ctx context.Context) error {
 }
 
 func (p *Processor) process(ctx context.Context, record *Record) error {
-	stores, err := p.adyenAPI.SearchStores(ctx, record.StoreID)
+	balanceID, legalEntityID, err := p.ids(ctx, record)
 	if err != nil {
-		return fmt.Errorf("failed to get all stores: %w", err)
+		return fmt.Errorf("failed to get ids: %w", err)
 	}
-	if stores.ItemsTotal != 1 || len(stores.Data) != 1 {
-		return ErrInvalidResponse
+
+	legalEntity, err := p.adyenAPI.LegalEntity(ctx, legalEntityID)
+	if err != nil {
+		return fmt.Errorf("failed to get legal entity: %w", err)
 	}
-	if stores.Data[0].Reference != record.StoreID {
-		return fmt.Errorf("store ID not found: %s %s", stores.Data[0].Reference, record.StoreID)
+	if len(legalEntity.TransferInstruments) != 1 {
+		return fmt.Errorf("expected 1 legal instrument, got %d (%s)", len(legalEntity.TransferInstruments), legalEntityID)
 	}
-	if len(stores.Data[0].BusinessLineIDs) != 1 {
-		return fmt.Errorf("store does not have one business line: %d", len(stores.Data[0].BusinessLineIDs))
+
+	sweeps, err := p.adyenAPI.Sweeps(ctx, balanceID)
+	if err != nil {
+		return fmt.Errorf("failed to get sweeps: %w", err)
+	}
+	if len(sweeps.Sweeps) != 1 {
+		return fmt.Errorf("expected 1 sweep configuration, got %d (%s)", len(sweeps.Sweeps), balanceID)
+	}
+
+	if sweeps.Sweeps[0].Counterparty.TransferInstrumentID == legalEntity.TransferInstruments[0].ID {
+		p.logger.
+			With(zap.String("BalanceID", balanceID)).
+			With(zap.String("LegalEntityID", legalEntityID)).
+			Info("Transfer instrument already valid")
+		return nil
 	}
 
 	if !p.dryRun {
-		if err := p.addPaymentMethods(ctx, &stores.Data[0], record.PaymentMethods, record.Currency); err != nil {
-			return fmt.Errorf("failed to add payment methods: %w", err)
+		_, err := p.adyenAPI.UpdateSweep(ctx, balanceID, sweeps.Sweeps[0].ID, legalEntity.TransferInstruments[0].ID)
+		if err != nil {
+			return fmt.Errorf("failed to update sweep (%s): %w", balanceID, err)
 		}
 	}
 	return nil
 }
 
-func (p *Processor) addPaymentMethods(
-	ctx context.Context, store *adyen.GetStoreResponse, methods, currency string,
-) error {
-	ar := strings.Split(methods, "|")
-	errs := make([]error, 0, len(ar))
-	for _, method := range ar {
-		_, err :=
-			p.adyenAPI.AddPaymentMethod(ctx, store.MerchantID, store.ID, store.BusinessLineIDs[0], method, currency)
+func (p *Processor) ids(ctx context.Context, record *Record) (string, string, error) {
+	accountHolderID := record.AccountHolderID
+	if accountHolderID == "" && record.BalanceID != "" {
+		acc, err := p.adyenAPI.BalanceAccount(ctx, record.BalanceID)
 		if err != nil {
-			errs = append(errs, err)
+			return "", "", fmt.Errorf("failed to get balance account (%s): %w", record.BalanceID, err)
 		}
+		accountHolderID = acc.AccountHolderID
 	}
-	if len(errs) > 0 {
-		return fmt.Errorf("failed to add payment methods: %w", errors.Join(errs...))
+	if accountHolderID == "" {
+		return "", "", fmt.Errorf("no balance account holder identified: %s", record.BalanceID)
 	}
-	return nil
+
+	acc, err := p.adyenAPI.BalanceAccountHolder(ctx, accountHolderID)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get balance account by holder (%s): %w", record.AccountHolderID, err)
+	}
+
+	balanceID := acc.PrimaryBalanceAccount
+	if balanceID == "" {
+		return "", "", fmt.Errorf("no balance account identified: %s", accountHolderID)
+	}
+
+	legalEntityID := acc.LegalEntityID
+	if legalEntityID == "" {
+		return "", "", fmt.Errorf("no legal entity identified: %s", accountHolderID)
+	}
+	return balanceID, legalEntityID, nil
 }

@@ -80,7 +80,7 @@ type SetStoreStatusRequest struct {
 }
 
 // GetStoreResponse declare get store information response.
-type GetStoreResponse struct { //nolint:govet
+type GetStoreResponse struct {
 	ID              string   `json:"id"`
 	MerchantID      string   `json:"merchantId"`
 	BusinessLineIDs []string `json:"businessLineIds"`
@@ -103,7 +103,7 @@ type AddPaymentMethodRequest struct {
 }
 
 // AddPaymentMethodResponse declare add payment method response.
-type AddPaymentMethodResponse struct { //nolint:govet
+type AddPaymentMethodResponse struct {
 	ID                 string   `json:"id"`
 	Type               string   `json:"type"`
 	BusinessLineID     string   `json:"businessLineId"`
@@ -112,6 +112,203 @@ type AddPaymentMethodResponse struct { //nolint:govet
 	Enabled            bool     `json:"enabled"`
 	Allowed            bool     `json:"allowed"`
 	VerificationStatus string   `json:"verificationStatus"`
+}
+
+// GetBalanceAccountResponse declare balance account information.
+type GetBalanceAccountResponse struct {
+	ID                           string `json:"id"`
+	AccountHolderID              string `json:"accountHolderId"`
+	DefaultCurrencyCode          string `json:"defaultCurrencyCode"`
+	Description                  string `json:"description"`
+	PlatformPaymentConfiguration struct {
+		SalesDayClosingTime string `json:"salesDayClosingTime"`
+		SettlementDelayDays int    `json:"settlementDelayDays"`
+	} `json:"platformPaymentConfiguration"`
+	TimeZone string `json:"timeZone"`
+	Balances []struct {
+		Available int    `json:"available"`
+		Balance   int    `json:"balance"`
+		Currency  string `json:"currency"`
+		Pending   int    `json:"pending"`
+		Reserved  int    `json:"reserved"`
+	} `json:"balances"`
+	Status string `json:"status"`
+}
+
+// GetBalanceAccountHolderResponse declare the response for balance get account holder request.
+type GetBalanceAccountHolderResponse struct {
+	ID                    string `json:"id"`
+	PrimaryBalanceAccount string `json:"primaryBalanceAccount"`
+	BalancePlatform       string `json:"balancePlatform"`
+	Description           string `json:"description"`
+	LegalEntityID         string `json:"legalEntityId"`
+	Capabilities          struct {
+		ReceiveFromPlatformPayments struct {
+			Enabled            bool   `json:"enabled"`
+			Requested          bool   `json:"requested"`
+			Allowed            bool   `json:"allowed"`
+			VerificationStatus string `json:"verificationStatus"`
+		} `json:"receiveFromPlatformPayments"`
+		ReceiveFromBalanceAccount struct {
+			Enabled            bool   `json:"enabled"`
+			Requested          bool   `json:"requested"`
+			Allowed            bool   `json:"allowed"`
+			VerificationStatus string `json:"verificationStatus"`
+		} `json:"receiveFromBalanceAccount"`
+		SendToBalanceAccount struct {
+			Enabled            bool   `json:"enabled"`
+			Requested          bool   `json:"requested"`
+			Allowed            bool   `json:"allowed"`
+			VerificationStatus string `json:"verificationStatus"`
+		} `json:"sendToBalanceAccount"`
+		SendToTransferInstrument struct {
+			Enabled            bool   `json:"enabled"`
+			Requested          bool   `json:"requested"`
+			Allowed            bool   `json:"allowed"`
+			VerificationStatus string `json:"verificationStatus"`
+		} `json:"sendToTransferInstrument"`
+		ReceivePayments struct {
+			Enabled            bool   `json:"enabled"`
+			Requested          bool   `json:"requested"`
+			Allowed            bool   `json:"allowed"`
+			VerificationStatus string `json:"verificationStatus"`
+		} `json:"receivePayments"`
+	} `json:"capabilities"`
+	Status string `json:"status"`
+}
+
+// GetLegalEntityResponse declare legal entity structure.
+type GetLegalEntityResponse struct {
+	ID           string `json:"id"`
+	Capabilities struct {
+		ReceiveFromBalanceAccount struct {
+			Allowed            bool   `json:"allowed"`
+			Requested          bool   `json:"requested"`
+			VerificationStatus string `json:"verificationStatus"`
+		} `json:"receiveFromBalanceAccount"`
+		ReceivePayments struct {
+			Allowed            bool   `json:"allowed"`
+			Requested          bool   `json:"requested"`
+			VerificationStatus string `json:"verificationStatus"`
+		} `json:"receivePayments"`
+		SendToTransferInstrument struct {
+			Allowed            bool   `json:"allowed"`
+			Requested          bool   `json:"requested"`
+			VerificationStatus string `json:"verificationStatus"`
+		} `json:"sendToTransferInstrument"`
+		ReceiveFromPlatformPayments struct {
+			Allowed            bool   `json:"allowed"`
+			Requested          bool   `json:"requested"`
+			VerificationStatus string `json:"verificationStatus"`
+		} `json:"receiveFromPlatformPayments"`
+		SendToBalanceAccount struct {
+			Allowed            bool   `json:"allowed"`
+			Requested          bool   `json:"requested"`
+			VerificationStatus string `json:"verificationStatus"`
+		} `json:"sendToBalanceAccount"`
+	} `json:"capabilities"`
+	EntityAssociations []struct {
+		AssociatorID  string `json:"associatorId"`
+		EntityType    string `json:"entityType"`
+		JobTitle      string `json:"jobTitle,omitempty"`
+		LegalEntityID string `json:"legalEntityId"`
+		Name          string `json:"name"`
+		Type          string `json:"type"`
+	} `json:"entityAssociations"`
+	Organization struct {
+		DoingBusinessAs   string `json:"doingBusinessAs"`
+		LegalName         string `json:"legalName"`
+		RegisteredAddress struct {
+			City            string `json:"city"`
+			Country         string `json:"country"`
+			PostalCode      string `json:"postalCode"`
+			StateOrProvince string `json:"stateOrProvince"`
+			Street          string `json:"street"`
+		} `json:"registeredAddress"`
+		RegistrationNumber string `json:"registrationNumber"`
+		TaxInformation     []struct {
+			Country string `json:"country"`
+			Number  string `json:"number"`
+			Type    string `json:"type"`
+		} `json:"taxInformation"`
+		Type string `json:"type"`
+	} `json:"organization"`
+	Type            string `json:"type"`
+	DocumentDetails []struct {
+		ID               string    `json:"id"`
+		Active           bool      `json:"active"`
+		Description      string    `json:"description"`
+		FileName         string    `json:"fileName"`
+		ModificationDate time.Time `json:"modificationDate"`
+		Pages            []struct {
+			PageName   string `json:"pageName"`
+			PageNumber int    `json:"pageNumber"`
+			Type       string `json:"type"`
+		} `json:"pages"`
+		Type string `json:"type"`
+	} `json:"documentDetails"`
+	Documents []struct {
+		ID string `json:"id"`
+	} `json:"documents"`
+	TransferInstruments []struct {
+		ID                string `json:"id"`
+		AccountIdentifier string `json:"accountIdentifier"`
+		TrustedSource     bool   `json:"trustedSource"`
+	} `json:"transferInstruments"`
+}
+
+// Sweep declare one sweep configuration.
+type Sweep struct {
+	ID       string `json:"id"`
+	Schedule struct {
+		CronExpression string `json:"cronExpression"`
+		Type           string `json:"type"`
+	} `json:"schedule"`
+	Status       string `json:"status"`
+	TargetAmount struct {
+		Currency string `json:"currency"`
+		Value    int    `json:"value"`
+	} `json:"targetAmount"`
+	TriggerAmount struct {
+		Currency string `json:"currency"`
+		Value    int    `json:"value"`
+	} `json:"triggerAmount"`
+	Type         string `json:"type"`
+	Category     string `json:"category"`
+	Counterparty struct {
+		TransferInstrumentID string `json:"transferInstrumentId"`
+	} `json:"counterparty"`
+	Currency   string   `json:"currency"`
+	Priorities []string `json:"priorities"`
+}
+
+// GetSweepsResponse declare all available sweeps per balance account.
+type GetSweepsResponse struct {
+	HasNext     bool    `json:"hasNext"`
+	HasPrevious bool    `json:"hasPrevious"`
+	Sweeps      []Sweep `json:"sweeps"`
+}
+
+// UpdateSweepRequest declare update sweep configuration request.
+type UpdateSweepRequest struct {
+	Counterparty struct {
+		TransferInstrumentID string `json:"transferInstrumentId"`
+	} `json:"counterparty"`
+	Status string `json:"status"`
+}
+
+// Sweep configuration status
+
+const (
+	SweepActive = "active"
+)
+
+// SetSalesCloseTimeRequest declare change sales closing time request.
+type SetSalesCloseTimeRequest struct {
+	PlatformPaymentConfiguration struct {
+		SalesDayClosingTime string `json:"salesDayClosingTime"`
+		SettlementDelayDays int    `json:"settlementDelayDays"`
+	} `json:"platformPaymentConfiguration"`
 }
 
 // ReassignTerminalRequest declare reassign terminal request.
@@ -137,16 +334,16 @@ type SetSimCardStatusRequest struct {
 
 // SetOfflinePaymentsRequest declare request to update offline payments settings.
 type SetOfflinePaymentsRequest struct {
-	OfflineProcessing struct { //nolint:govet
-		ChipFloorLimit     int        `json:"chipFloorLimit"`
-		OfflineSwipeLimits []struct { //nolint:govet
+	OfflineProcessing struct {
+		ChipFloorLimit     int `json:"chipFloorLimit"`
+		OfflineSwipeLimits []struct {
 			Amount       int    `json:"amount"`
 			CurrencyCode string `json:"currencyCode"`
 		} `json:"offlineSwipeLimits"`
 	} `json:"offlineProcessing"`
-	StoreAndForward struct { //nolint:govet
-		MaxPayments int        `json:"maxPayments"`
-		MaxAmount   []struct { //nolint:govet
+	StoreAndForward struct {
+		MaxPayments int `json:"maxPayments"`
+		MaxAmount   []struct {
 			Amount       int    `json:"amount"`
 			CurrencyCode string `json:"currencyCode"`
 		} `json:"maxAmount"`
@@ -161,17 +358,17 @@ type SetOfflinePaymentsRequest struct {
 }
 
 // TerminalSettingsResponse declare response with terminal settings.
-type TerminalSettingsResponse struct { //nolint:govet
+type TerminalSettingsResponse struct {
 	CardholderReceipt struct {
 		HeaderForAuthorizedReceipt string `json:"headerForAuthorizedReceipt"`
 	} `json:"cardholderReceipt"`
-	Gratuities []struct { //nolint:govet
+	Gratuities []struct {
 		Currency                string   `json:"currency"`
 		UsePredefinedTipEntries bool     `json:"usePredefinedTipEntries"`
 		PredefinedTipEntries    []string `json:"predefinedTipEntries"`
 		AllowCustomAmount       bool     `json:"allowCustomAmount"`
 	} `json:"gratuities"`
-	Nexo struct { //nolint:govet
+	Nexo struct {
 		DisplayUrls struct {
 			LocalUrls []struct {
 				Password string `json:"password"`
@@ -201,7 +398,7 @@ type TerminalSettingsResponse struct { //nolint:govet
 				Username string `json:"username"`
 			} `json:"eventPublicUrls"`
 		} `json:"eventUrls"`
-		Notification struct { //nolint:govet
+		Notification struct {
 			Category   string `json:"category"`
 			Details    string `json:"details"`
 			Enabled    bool   `json:"enabled"`
@@ -243,9 +440,9 @@ type TerminalSettingsResponse struct { //nolint:govet
 	Connectivity struct {
 		SimcardStatus string `json:"simcardStatus"`
 	} `json:"connectivity"`
-	OfflineProcessing struct { //nolint:govet
-		ChipFloorLimit     int        `json:"chipFloorLimit"`
-		OfflineSwipeLimits []struct { //nolint:govet
+	OfflineProcessing struct {
+		ChipFloorLimit     int `json:"chipFloorLimit"`
+		OfflineSwipeLimits []struct {
 			Amount       int    `json:"amount"`
 			CurrencyCode string `json:"currencyCode"`
 		} `json:"offlineSwipeLimits"`
@@ -254,13 +451,13 @@ type TerminalSettingsResponse struct { //nolint:govet
 		AdminMenuPin string `json:"adminMenuPin"`
 		TxMenuPin    string `json:"txMenuPin"`
 	} `json:"passcodes"`
-	Standalone struct { //nolint:govet
+	Standalone struct {
 		EnableStandalone bool   `json:"enableStandalone"`
 		CurrencyCode     string `json:"currencyCode"`
 	} `json:"standalone"`
-	StoreAndForward struct { //nolint:govet
-		MaxPayments int        `json:"maxPayments"`
-		MaxAmount   []struct { //nolint:govet
+	StoreAndForward struct {
+		MaxPayments int `json:"maxPayments"`
+		MaxAmount   []struct {
 			Amount       int    `json:"amount"`
 			CurrencyCode string `json:"currencyCode"`
 		} `json:"maxAmount"`
@@ -285,7 +482,7 @@ type TerminalSettingsResponse struct { //nolint:govet
 }
 
 // SearchTerminalsResponse declare response for search terminals request.
-type SearchTerminalsResponse struct { //nolint:govet
+type SearchTerminalsResponse struct {
 	ItemsTotal int `json:"itemsTotal"`
 	PagesTotal int `json:"pagesTotal"`
 	Data       []struct {
@@ -316,7 +513,7 @@ type SearchTerminalsResponse struct { //nolint:govet
 
 // SearchAndroidAppsResponse declare response for get android apps request.
 type SearchAndroidAppsResponse struct {
-	Data []struct { //nolint:govet
+	Data []struct {
 		ID          string `json:"id"`
 		PackageName string `json:"packageName"`
 		VersionCode int    `json:"versionCode"`
@@ -328,7 +525,7 @@ type SearchAndroidAppsResponse struct {
 }
 
 // ScheduleActionRequest declare structure for schedule action request.
-type ScheduleActionRequest struct { //nolint:govet
+type ScheduleActionRequest struct {
 	TerminalIDs   []string `json:"terminalIds"`
 	StoreID       string   `json:"storeId"`
 	ScheduledAt   string   `json:"scheduledAt"`

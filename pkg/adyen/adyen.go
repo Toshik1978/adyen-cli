@@ -20,15 +20,25 @@ type API struct {
 	calKey  string
 	mgmtURL string
 	mgmtKey string
+	kycURL  string
+	kycKey  string
+	balURL  string
+	balKey  string
 }
 
 // New instantiate the new API object instance.
-func New(logger *zap.Logger, client *http.Client, calURL, calKey, mgmtURL, mgmtKey string) *API {
+func New(
+	logger *zap.Logger, client *http.Client, calURL, calKey, mgmtURL, mgmtKey, kycURL, kycKey, balURL, balKey string,
+) *API {
 	return &API{
 		calURL:  calURL,
 		calKey:  calKey,
 		mgmtURL: mgmtURL,
 		mgmtKey: mgmtKey,
+		kycURL:  kycURL,
+		kycKey:  kycKey,
+		balURL:  balURL,
+		balKey:  balKey,
 		logger:  logger,
 		client:  client,
 	}
@@ -63,7 +73,7 @@ func (a *API) AccountHolder(ctx context.Context, accountHolderCode string) (*Get
 }
 
 // UpdateAccountHolder updates account holder.
-func (a *API) UpdateAccountHolder(ctx context.Context, accountHolder *UpdateAccountHolderRequest) error { //nolint:dupl
+func (a *API) UpdateAccountHolder(ctx context.Context, accountHolder *UpdateAccountHolderRequest) error {
 	a.logger.
 		With(zap.Any("AccountHolder", accountHolder)).
 		Info(">> Update Account Holder")
@@ -91,7 +101,7 @@ func (a *API) UpdateAccountHolder(ctx context.Context, accountHolder *UpdateAcco
 }
 
 // CloseAccountHolder closes account holder.
-func (a *API) CloseAccountHolder(ctx context.Context, accountHolderCode string) error { //nolint:dupl
+func (a *API) CloseAccountHolder(ctx context.Context, accountHolderCode string) error {
 	a.logger.
 		With(zap.String("AccountHolderCode", accountHolderCode)).
 		Info(">> Close Account Holder")
@@ -150,7 +160,7 @@ func (a *API) UpdateSplitConfiguration(
 }
 
 // SearchStores gets store's management IDs by store ID.
-func (a *API) SearchStores(ctx context.Context, storeID string) (*SearchStoresResponse, error) { //nolint:dupl
+func (a *API) SearchStores(ctx context.Context, storeID string) (*SearchStoresResponse, error) {
 	a.logger.
 		With(zap.String("StoreID", storeID)).
 		Info(">> Get All Store")
@@ -210,7 +220,7 @@ func (a *API) SetStoreStatus(ctx context.Context, storeMgmtID, status string) er
 // AddPaymentMethod adds payment method to the store.
 func (a *API) AddPaymentMethod(
 	ctx context.Context, merchantID, storeID, businessLineID, method, currency string,
-) (*AddPaymentMethodResponse, error) { //nolint:dupl
+) (*AddPaymentMethodResponse, error) {
 	a.logger.
 		With(zap.String("MerchantID", merchantID)).
 		With(zap.String("StoreID", storeID)).
@@ -248,6 +258,196 @@ func (a *API) AddPaymentMethod(
 		With(zap.String("Currency", currency)).
 		With(zap.Any("Response", resp)).
 		Info("<< Add Payment Method")
+	return &resp, nil
+}
+
+// BalanceAccount retrieve information about balance account.
+func (a *API) BalanceAccount(
+	ctx context.Context, balanceID string,
+) (*GetBalanceAccountResponse, error) {
+	a.logger.
+		With(zap.String("BalanceID", balanceID)).
+		Info(">> Balance Account")
+
+	response, err := a.call(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("https://%s/bcl/v2/balanceAccounts/%s", a.balURL, balanceID),
+		a.balKey,
+		nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get balance account: %w", err)
+	}
+
+	var resp GetBalanceAccountResponse
+	if err := json.Unmarshal(response, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("BalanceID", balanceID)).
+		With(zap.Any("Response", resp)).
+		Info("<< Balance Account")
+	return &resp, nil
+}
+
+// BalanceAccountHolder retrieve information about balance account holder.
+func (a *API) BalanceAccountHolder(
+	ctx context.Context, accountHolderID string,
+) (*GetBalanceAccountHolderResponse, error) {
+	a.logger.
+		With(zap.String("AccountHolderID", accountHolderID)).
+		Info(">> Balance Account Holder")
+
+	response, err := a.call(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("https://%s/bcl/v2/accountHolders/%s", a.balURL, accountHolderID),
+		a.balKey,
+		nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get balance account holder: %w", err)
+	}
+
+	var resp GetBalanceAccountHolderResponse
+	if err := json.Unmarshal(response, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("AccountHolderID", accountHolderID)).
+		With(zap.Any("Response", resp)).
+		Info("<< Balance Account Holder")
+	return &resp, nil
+}
+
+// LegalEntity retrieve information about legal entity.
+func (a *API) LegalEntity(ctx context.Context, legalEntityID string) (*GetLegalEntityResponse, error) {
+	a.logger.
+		With(zap.String("LegalEntityID", legalEntityID)).
+		Info(">> Legal Entity")
+
+	response, err := a.call(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("https://%s/lem/v3/legalEntities/%s", a.kycURL, legalEntityID),
+		a.kycKey,
+		nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get legal entity: %w", err)
+	}
+
+	var resp GetLegalEntityResponse
+	if err := json.Unmarshal(response, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("LegalEntityID", legalEntityID)).
+		With(zap.Any("Response", resp)).
+		Info("<< Legal Entity")
+	return &resp, nil
+}
+
+// Sweeps retrieve all sweep configurations.
+func (a *API) Sweeps(ctx context.Context, balanceID string) (*GetSweepsResponse, error) {
+	a.logger.
+		With(zap.String("BalanceID", balanceID)).
+		Info(">> Sweeps")
+
+	response, err := a.call(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("https://%s/bcl/v2/balanceAccounts/%s/sweeps", a.balURL, balanceID),
+		a.balKey,
+		nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sweeps: %w", err)
+	}
+
+	var resp GetSweepsResponse
+	if err := json.Unmarshal(response, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("BalanceID", balanceID)).
+		With(zap.Any("Response", resp)).
+		Info("<< Sweeps")
+	return &resp, nil
+}
+
+// UpdateSweep updates sweep configuration.
+func (a *API) UpdateSweep(ctx context.Context, balanceID, sweepID, transferInstrumentID string) (*Sweep, error) {
+	a.logger.
+		With(zap.String("BalanceID", balanceID)).
+		With(zap.String("SweepID", sweepID)).
+		With(zap.String("TransferInstrumentID", transferInstrumentID)).
+		Info(">> Update Sweep")
+
+	req := UpdateSweepRequest{}
+	req.Counterparty.TransferInstrumentID = transferInstrumentID
+	req.Status = SweepActive
+
+	response, err := a.call(
+		ctx,
+		http.MethodPatch,
+		fmt.Sprintf("https://%s/bcl/v2/balanceAccounts/%s/sweeps/%s", a.balURL, balanceID, sweepID),
+		a.balKey,
+		&req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update sweep configuration: %w", err)
+	}
+
+	var resp Sweep
+	if err := json.Unmarshal(response, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("BalanceID", balanceID)).
+		With(zap.String("SweepID", sweepID)).
+		With(zap.String("TransferInstrumentID", transferInstrumentID)).
+		With(zap.Any("Response", resp)).
+		Info("<< Update Sweep")
+	return &resp, nil
+}
+
+// SetSalesCloseTime changes sales close time for the store.
+func (a *API) SetSalesCloseTime(
+	ctx context.Context, balanceID, closingTime string, delays int,
+) (*GetBalanceAccountResponse, error) {
+	a.logger.
+		With(zap.String("BalanceID", balanceID)).
+		With(zap.String("ClosingTime", closingTime)).
+		With(zap.Int("Delays", delays)).
+		Info(">> Change Sales Close Time")
+
+	req := SetSalesCloseTimeRequest{}
+	req.PlatformPaymentConfiguration.SalesDayClosingTime = closingTime
+	req.PlatformPaymentConfiguration.SettlementDelayDays = delays
+
+	response, err := a.call(
+		ctx,
+		http.MethodPatch,
+		fmt.Sprintf("https://%s/bcl/v2/balanceAccounts/%s", a.balURL, balanceID),
+		a.balKey,
+		&req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to change sales close time: %w", err)
+	}
+
+	var resp GetBalanceAccountResponse
+	if err := json.Unmarshal(response, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Adyen response: %w", err)
+	}
+
+	a.logger.
+		With(zap.String("BalanceID", balanceID)).
+		With(zap.String("ClosingTime", closingTime)).
+		With(zap.Int("Delays", delays)).
+		With(zap.Any("Response", resp)).
+		Info("<< Change Sales Close Time")
 	return &resp, nil
 }
 
@@ -289,7 +489,7 @@ func (a *API) ReassignTerminal(ctx context.Context, terminalID, merchantID, stor
 }
 
 // TerminalSettings gets terminal settings.
-func (a *API) TerminalSettings(ctx context.Context, terminalID string) (*TerminalSettingsResponse, error) { //nolint:dupl
+func (a *API) TerminalSettings(ctx context.Context, terminalID string) (*TerminalSettingsResponse, error) {
 	a.logger.
 		With(zap.String("TerminalID", terminalID)).
 		Info(">> Get Terminal Settings")
@@ -384,7 +584,7 @@ func (a *API) DisableOfflinePayments(ctx context.Context, terminalID string, set
 }
 
 // SearchTerminals gets the list of terminals.
-func (a *API) SearchTerminals(ctx context.Context, storeID, searchQuery string) (*SearchTerminalsResponse, error) { //nolint:dupl
+func (a *API) SearchTerminals(ctx context.Context, storeID, searchQuery string) (*SearchTerminalsResponse, error) {
 	a.logger.
 		With(zap.String("StoreID", storeID)).
 		With(zap.String("SearchQuery", searchQuery)).
@@ -414,7 +614,7 @@ func (a *API) SearchTerminals(ctx context.Context, storeID, searchQuery string) 
 }
 
 // SearchAndroidApps gets the list of android apps.
-func (a *API) SearchAndroidApps(ctx context.Context, companyID, packageName string) (*SearchAndroidAppsResponse, error) { //nolint:dupl
+func (a *API) SearchAndroidApps(ctx context.Context, companyID, packageName string) (*SearchAndroidAppsResponse, error) {
 	a.logger.
 		With(zap.String("CompanyID", companyID)).
 		With(zap.String("PackageName", packageName)).
@@ -444,7 +644,7 @@ func (a *API) SearchAndroidApps(ctx context.Context, companyID, packageName stri
 }
 
 // InstallAndroidApp schedule action to install android app.
-func (a *API) InstallAndroidApp(ctx context.Context, appID, storeID string, terminalIDs []string, at string) error { //nolint:dupl
+func (a *API) InstallAndroidApp(ctx context.Context, appID, storeID string, terminalIDs []string, at string) error {
 	a.logger.
 		With(zap.String("AppID", appID)).
 		With(zap.String("StoreID", storeID)).

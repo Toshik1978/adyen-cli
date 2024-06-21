@@ -28,18 +28,26 @@ type Processor struct {
 func New(
 	logger *zap.Logger, client *http.Client, config *commands.Config,
 	csvFilePath string, production, dryRun bool) *Processor {
-	var calURL, calKey, mgmtURL, mgmtKey string
+	var calURL, calKey, mgmtURL, mgmtKey, kycURL, kycKey, balURL, balKey string
 	switch {
 	case production:
 		calURL = config.AdyenCalURL
 		calKey = config.AdyenCalKey
 		mgmtURL = config.AdyenMgmtURL
 		mgmtKey = config.AdyenMgmtKey
+		kycURL = config.AdyenKycURL
+		kycKey = config.AdyenKycKey
+		balURL = config.AdyenBalURL
+		balKey = config.AdyenBalKey
 	case !production:
 		calURL = config.AdyenCalTestURL
 		calKey = config.AdyenCalTestKey
 		mgmtURL = config.AdyenMgmtTestURL
 		mgmtKey = config.AdyenMgmtTestKey
+		kycURL = config.AdyenKycTestURL
+		kycKey = config.AdyenKycTestKey
+		balURL = config.AdyenBalTestURL
+		balKey = config.AdyenBalTestKey
 	}
 
 	gocsv.SetHeaderNormalizer(strings.ToUpper)
@@ -47,7 +55,7 @@ func New(
 	return &Processor{
 		logger:      logger,
 		client:      client,
-		adyenAPI:    adyen.New(logger, client, calURL, calKey, mgmtURL, mgmtKey),
+		adyenAPI:    adyen.New(logger, client, calURL, calKey, mgmtURL, mgmtKey, kycURL, kycKey, balURL, balKey),
 		csvFilePath: csvFilePath,
 		dryRun:      dryRun,
 	}

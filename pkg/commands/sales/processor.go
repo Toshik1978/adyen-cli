@@ -1,4 +1,4 @@
-package cellular
+package sales
 
 import (
 	"context"
@@ -17,18 +17,18 @@ import (
 
 // Processor declare implementation of the main module.
 type Processor struct {
-	logger      *zap.Logger
-	client      *http.Client
-	adyenAPI    *adyen.API
-	csvFilePath string
-	disable     bool
-	dryRun      bool
+	logger           *zap.Logger
+	client           *http.Client
+	adyenAPI         *adyen.API
+	csvFilePath      string
+	shouldCloseStore bool
+	dryRun           bool
 }
 
 // New creates new instance of Processor.
 func New(
 	logger *zap.Logger, client *http.Client, config *commands.Config,
-	csvFilePath string, disable, production, dryRun bool) *Processor {
+	csvFilePath string, production, dryRun bool) *Processor {
 	var calURL, calKey, mgmtURL, mgmtKey, kycURL, kycKey, balURL, balKey string
 	switch {
 	case production:
@@ -58,12 +58,11 @@ func New(
 		client:      client,
 		adyenAPI:    adyen.New(logger, client, calURL, calKey, mgmtURL, mgmtKey, kycURL, kycKey, balURL, balKey),
 		csvFilePath: csvFilePath,
-		disable:     disable,
 		dryRun:      dryRun,
 	}
 }
 
-// Run runs parsing & cellular processing.
+// Run runs sales close time updater.
 func (p *Processor) Run(ctx context.Context) error {
 	file, err := os.OpenFile(p.csvFilePath, os.O_RDONLY, os.ModePerm)
 	if err != nil {
@@ -93,38 +92,33 @@ func (p *Processor) Run(ctx context.Context) error {
 			With(zap.Errors("Errors", errs)).
 			With(zap.Int("Success Count", successCnt)).
 			With(zap.Int("Failure Count", failureCnt)).
-			Error("Failed to process terminals")
-		return fmt.Errorf("failed to process cellular: %w", errors.Join(errs...))
+			Error("Failed to process restaurants")
+		return fmt.Errorf("failed to process sales close time record: %w", errors.Join(errs...))
 	}
 
 	p.logger.
 		With(zap.Int("Success Count", successCnt)).
-		Info("Finished to process terminals")
+		Info("Finished to process restaurants")
 	return nil
 }
 
 func (p *Processor) process(ctx context.Context, record *Record) error {
-	terminalID := record.TerminalID
-	if terminalID == "" && record.Serial != "" {
-		// Get terminal ID by serial number
-		terminals, err := p.adyenAPI.SearchTerminals(ctx, "", record.Serial)
+	balanceID := record.BalanceID
+	if record.AccountHolderID != "" && record.BalanceID == "" {
+		acc, err := p.adyenAPI.BalanceAccountHolder(ctx, record.AccountHolderID)
 		if err != nil {
-			return fmt.Errorf("failed to process terminals: %w", err)
+			return fmt.Errorf("failed to get balance account by holder (%s): %w", record.AccountHolderID, err)
 		}
-		if terminals.ItemsTotal != 1 {
-			return fmt.Errorf("expected 1 terminal, got %d", terminals.ItemsTotal)
-		}
-		terminalID = terminals.Data[0].ID
+		balanceID = acc.PrimaryBalanceAccount
 	}
-	if terminalID == "" {
-		return fmt.Errorf("no terminal id and serial number defined")
+	if balanceID == "" {
+		return fmt.Errorf("no balance account identified: %s", record.AccountHolderID)
 	}
 
-	if p.dryRun {
-		return nil
-	}
-	if err := p.adyenAPI.SetSimCardStatus(ctx, terminalID, p.disable); err != nil {
-		return fmt.Errorf("failed to process cellular: %w", err)
+	if !p.dryRun {
+		if _, err := p.adyenAPI.SetSalesCloseTime(ctx, balanceID, record.CloseTime, record.Delays); err != nil {
+			return fmt.Errorf("failed to change sales close time: %w", err)
+		}
 	}
 	return nil
 }

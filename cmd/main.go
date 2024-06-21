@@ -1,4 +1,3 @@
-//nolint:dupl
 package main
 
 import (
@@ -23,6 +22,8 @@ import (
 	"github.com/Toshik1978/csv2adyen/pkg/commands/method"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/offline"
 	"github.com/Toshik1978/csv2adyen/pkg/commands/reassign"
+	"github.com/Toshik1978/csv2adyen/pkg/commands/sales"
+	"github.com/Toshik1978/csv2adyen/pkg/commands/sweep"
 )
 
 const (
@@ -176,6 +177,60 @@ func newApp(logger *zap.Logger, client *http.Client, config *commands.Config) *c
 				},
 				Action: func(c *cli.Context) error {
 					p := method.New(
+						logger, client, config,
+						c.String("csv"), c.Bool("prod"), c.Bool("dry-run"))
+					return p.Run(context.Background())
+				},
+			},
+			{
+				Name:    "sweep",
+				Aliases: []string{"s"},
+				Usage:   "Fix sweep configuration",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:      "csv",
+						Required:  true,
+						TakesFile: true,
+						Usage:     "the full path to CSV file, containing the required data to fix",
+					},
+					&cli.BoolFlag{
+						Name:  "prod",
+						Usage: "use this parameter if you want to run on production environment",
+					},
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "use this parameter if you want to do dry run (no changes will apply)",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					p := sweep.New(
+						logger, client, config,
+						c.String("csv"), c.Bool("prod"), c.Bool("dry-run"))
+					return p.Run(context.Background())
+				},
+			},
+			{
+				Name:    "time",
+				Aliases: []string{"t"},
+				Usage:   "Change sales closing time",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:      "csv",
+						Required:  true,
+						TakesFile: true,
+						Usage:     "the full path to CSV file, containing the required data to change time",
+					},
+					&cli.BoolFlag{
+						Name:  "prod",
+						Usage: "use this parameter if you want to run on production environment",
+					},
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "use this parameter if you want to do dry run (no changes will apply)",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					p := sales.New(
 						logger, client, config,
 						c.String("csv"), c.Bool("prod"), c.Bool("dry-run"))
 					return p.Run(context.Background())
