@@ -415,15 +415,17 @@ func (a *API) UpdateSweep(ctx context.Context, balanceID, sweepID, transferInstr
 
 // SetSalesCloseTime changes sales close time for the store.
 func (a *API) SetSalesCloseTime(
-	ctx context.Context, balanceID, closingTime string, delays int,
+	ctx context.Context, balanceID, closingTime, timeZone string, delays int,
 ) (*GetBalanceAccountResponse, error) {
 	a.logger.
 		With(zap.String("BalanceID", balanceID)).
 		With(zap.String("ClosingTime", closingTime)).
+		With(zap.String("TimeZone", timeZone)).
 		With(zap.Int("Delays", delays)).
 		Info(">> Change Sales Close Time")
 
 	req := SetSalesCloseTimeRequest{}
+	req.TimeZone = timeZone
 	req.PlatformPaymentConfiguration.SalesDayClosingTime = closingTime
 	req.PlatformPaymentConfiguration.SettlementDelayDays = delays
 
@@ -445,6 +447,7 @@ func (a *API) SetSalesCloseTime(
 	a.logger.
 		With(zap.String("BalanceID", balanceID)).
 		With(zap.String("ClosingTime", closingTime)).
+		With(zap.String("TimeZone", timeZone)).
 		With(zap.Int("Delays", delays)).
 		With(zap.Any("Response", resp)).
 		Info("<< Change Sales Close Time")

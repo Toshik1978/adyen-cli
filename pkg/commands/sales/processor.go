@@ -116,7 +116,8 @@ func (p *Processor) process(ctx context.Context, record *Record) error {
 	}
 
 	if !p.dryRun {
-		if _, err := p.adyenAPI.SetSalesCloseTime(ctx, balanceID, record.CloseTime, record.Delays); err != nil {
+		_, err := p.adyenAPI.SetSalesCloseTime(ctx, balanceID, record.CloseTime, record.TimeZone, record.Delays)
+		if err != nil {
 			return fmt.Errorf("failed to change sales close time: %w", err)
 		}
 	}

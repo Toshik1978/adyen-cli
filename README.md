@@ -65,7 +65,7 @@ This application was designed to automate some routine operations over Adyen acc
 2. Create the copy of `.env.dist` file locally.
 2. Fill it with the actual keys from Adyen (production / test / etc).
 3. Create the CSV file with the information about stores.
-   1. CSV should contain 3 columns - 'Account Holder ID' or 'Balance ID', 'Close Time' and 'Delays'.
+   1. CSV should contain 4 columns - 'Account Holder ID' or 'Balance ID', 'Close Time', 'TimeZone' and 'Delays'.
    2. 'Close Time' must be in format "HH:MM" and "HH" must be between 0 and 7.
    3. Delays defines you settlement delay in days.
 4. Run the process: `adyen-cli time --csv <Path to file> --prod` if you want to change sales close time.

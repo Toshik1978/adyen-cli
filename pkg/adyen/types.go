@@ -309,6 +309,7 @@ type SetSalesCloseTimeRequest struct {
 		SalesDayClosingTime string `json:"salesDayClosingTime"`
 		SettlementDelayDays int    `json:"settlementDelayDays"`
 	} `json:"platformPaymentConfiguration"`
+	TimeZone string `json:"timeZone"`
 }
 
 // ReassignTerminalRequest declare reassign terminal request.
